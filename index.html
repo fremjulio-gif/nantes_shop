@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nantes Underground – V2 (Place de Bretagne)</title>
+<title>Nantes Underground – V2</title>
 <style>
   :root {
     --bg-dark: #0a0a12;
@@ -208,7 +208,7 @@
   </div>
 
   <div class="hud-bottom">
-    <div id="message-bar">Bienvenue à la Place de Bretagne.</div>
+    <div id="message-bar">Bienvenue dans l'Underground.</div>
   </div>
   
   <div class="controls-hint">CLIC: Déplacement / Vente | JOUEUR: Tenue</div>
@@ -237,10 +237,23 @@ const ctx = canvas.getContext('2d', { alpha: false });
 //  AUDIO HOOKS (Pour Sound Design Externe)
 // ──────────────────────────────────────────────────────────────
 const AudioEngine = {
-  onTransactionSuccess(price, newXp) {},
-  onLevelUp(newLevel) {},
-  onStep(surfaceId) {},
-  onCameraMove(speedX, speedY) {}
+  onTransactionSuccess(price, newXp) {
+    // Joué lors d'une vente (ex: SFX caisse, monnaie)
+    // console.log(`[AUDIO] Vente: +${price}€`);
+  },
+  onLevelUp(newLevel) {
+    // Joué au passage de niveau (ex: Stinger épique, UI swell)
+    // console.log(`[AUDIO] Level UP! -> ${newLevel}`);
+  },
+  onStep(surfaceId) {
+    // Joué à chaque pas.
+    // 0: Béton, 1: Route, 2: Herbe/Parc, 3: Trottoir gravier
+    // Idéal pour une logique de random container dans FMOD/Wwise
+  },
+  onCameraMove(speedX, speedY) {
+    // Hook continu pour moduler le bruit de fond (vent, trafic)
+    // selon la vélocité de la caméra.
+  }
 };
 
 // ──────────────────────────────────────────────────────────────
@@ -248,8 +261,8 @@ const AudioEngine = {
 // ──────────────────────────────────────────────────────────────
 const TILE_W = 64;
 const TILE_H = 32;
-const MAP_COLS = 28;
-const MAP_ROWS = 28;
+const MAP_COLS = 24;
+const MAP_ROWS = 24;
 
 let cw, ch;
 function resize() {
@@ -261,6 +274,7 @@ function resize() {
 window.addEventListener('resize', resize);
 resize();
 
+// Conversion purement géométrique (indépendante de l'écran)
 function isoX(col, row) { return (col - row) * (TILE_W / 2); }
 function isoY(col, row) { return (col + row) * (TILE_H / 2); }
 
@@ -270,15 +284,17 @@ function toGrid(wx, wy) {
   return { col, row };
 }
 
+// Caméra (Smooth Follow)
 const camera = { x: 0, y: 0 };
 
 function updateCamera() {
   const targetX = isoX(player.col, player.row);
-  const targetY = isoY(player.col, player.row) - 30;
+  const targetY = isoY(player.col, player.row) - 30; // Offset visuel
   
   const dx = targetX - camera.x;
   const dy = targetY - camera.y;
   
+  // Lerp (interpolation)
   camera.x += dx * 0.06;
   camera.y += dy * 0.06;
 
@@ -288,36 +304,34 @@ function updateCamera() {
 }
 
 // ──────────────────────────────────────────────────────────────
-//  CARTE, BATIMENTS & ARBRES (Refonte Map Réaliste)
+//  CARTE ET BATIMENTS
 // ──────────────────────────────────────────────────────────────
-// 0: Béton/Place, 1: Route, 2: Herbe, 3: Trottoir, 4: Tramway
-// 8, 9: Socles solides pour les bâtiments
 // prettier-ignore
 const RAW_MAP = [
-  [ 9, 9, 9, 9, 3, 1, 1, 1, 1, 1, 1, 3, 4, 4, 3, 1, 1, 1, 1, 1, 1, 3, 9, 9, 9, 9, 9, 9],
-  [ 9, 9, 9, 3, 3, 1, 1, 1, 1, 1, 1, 3, 4, 4, 3, 1, 1, 1, 1, 1, 1, 3, 3, 9, 9, 9, 9, 9],
-  [ 9, 9, 3, 3, 3, 1, 1, 1, 1, 1, 1, 3, 4, 4, 3, 1, 1, 1, 1, 1, 1, 3, 3, 3, 9, 9, 9, 9],
-  [ 9, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 4, 4, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 9, 9, 9],
-  [ 3, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 4, 4, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 3, 9, 9],
-  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [ 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [ 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [ 3, 3, 3, 3, 3, 1, 1, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 0, 1, 1, 3, 3, 3, 3, 3, 3, 3],
-  [ 3, 3, 3, 3, 3, 1, 1, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 0, 1, 1, 3, 3, 3, 3, 3, 3, 3],
-  [ 3, 3, 3, 3, 3, 1, 1, 8, 8, 8, 8, 0, 4, 4, 0, 9, 9, 9, 0, 1, 1, 3, 3, 3, 3, 3, 3, 3],
-  [ 3, 3, 3, 3, 3, 1, 1, 8, 8, 8, 8, 0, 4, 4, 0, 9, 9, 9, 0, 1, 1, 3, 3, 3, 3, 3, 3, 3],
-  [ 3, 3, 3, 3, 3, 1, 1, 8, 8, 8, 8, 0, 4, 4, 0, 9, 9, 9, 0, 1, 1, 3, 3, 3, 3, 3, 3, 3],
-  [ 3, 3, 3, 3, 3, 1, 1, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 0, 1, 1, 3, 3, 3, 3, 3, 3, 3],
-  [ 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [ 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 4, 4, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 4, 4, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [ 3, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 4, 4, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 3, 9, 9],
-  [ 9, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 4, 4, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 9, 9, 9],
-  [ 9, 9, 3, 3, 3, 1, 1, 1, 1, 1, 1, 3, 4, 4, 3, 1, 1, 1, 1, 1, 1, 3, 3, 3, 9, 9, 9, 9],
-  [ 9, 9, 9, 3, 3, 1, 1, 1, 1, 1, 1, 3, 4, 4, 3, 1, 1, 1, 1, 1, 1, 3, 3, 9, 9, 9, 9, 9],
-  [ 9, 9, 9, 9, 3, 1, 1, 1, 1, 1, 1, 3, 4, 4, 3, 1, 1, 1, 1, 1, 1, 3, 9, 9, 9, 9, 9, 9],
+  [ 9, 9, 9, 9, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 9, 9, 9, 9],
+  [ 9, 9, 9, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 9, 9, 9],
+  [ 9, 9, 3, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 3, 9, 9],
+  [ 9, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 9],
+  [ 3, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 3],
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1],
+  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1],
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3],
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3],
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 8, 8, 8, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3],
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 8, 8, 8, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3],
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 8, 8, 8, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3],
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3],
+  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1],
+  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1],
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [ 3, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 3],
+  [ 9, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 9],
+  [ 9, 9, 3, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 3, 9, 9],
+  [ 9, 9, 9, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 9, 9, 9],
+  [ 9, 9, 9, 9, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 9, 9, 9, 9]
 ];
 
 const SOLID = new Set([8, 9]);
@@ -327,30 +341,25 @@ function isSolid(c, r) {
 }
 
 const BUILDINGS_DATA = [
-  // Bâtiments périphériques
   { col:0, row:0, w:3, h:4, height:70, top:'#2A2E35', left:'#1D2025', right:'#23262C' },
+  { col:3, row:0, w:2, h:3, height:55, top:'#353B3E', left:'#25292C', right:'#2D3235' },
+  { col:19, row:0, w:3, h:4, height:65, top:'#2E2A28', left:'#201D1C', right:'#262322' },
   { col:21, row:0, w:3, h:3, height:50, top:'#353E3B', left:'#252C2A', right:'#2D3532' },
   { col:0, row:19, w:3, h:4, height:60, top:'#28302D', left:'#1C2220', right:'#222926' },
+  { col:3, row:20, w:2, h:4, height:48, top:'#3E353B', left:'#2C252A', right:'#352D32' },
+  { col:19, row:19, w:3, h:4, height:65, top:'#302835', left:'#221C25', right:'#29222D' },
   { col:21, row:20, w:3, h:4, height:58, top:'#2A2E35', left:'#1D2025', right:'#23262C' },
-  // Bâtiment blanc à droite de la place (style Mutuelle/Finances)
-  { col:15, row:11, w:3, h:3, height:90, top:'#C5C9CD', left:'#9CA3A9', right:'#B0B6BC', isWhiteBldg:true },
-  // Tour de Bretagne (Base sombre, grandes dimensions)
-  { col:7, row:11, w:4, h:3, height:280, top:'#181A1F', left:'#111317', right:'#14161A', isTour:true }
+  { col:10, row:11, w:3, h:3, height:260, top:'#8AA4C4', left:'#4B6382', right:'#607D9E', isTour:true }
 ];
 
-// Arbres volumétriques pour le Y-Sort
-const TREES_DATA = [
-  { col:7.5, row:7.5 }, { col:10, row:7.5 }, { col:15, row:8 }, { col:18, row:8.5 },
-  { col:7.5, row:15.5 }, { col:10, row:15.5 }, { col:15.5, row:16 }, { col:18, row:15.5 }
-];
-
+// Compilation des bâtiments en blocs 1x1 pour un Y-Sort géométriquement parfait
 const SUB_BUILDINGS = [];
 BUILDINGS_DATA.forEach(b => {
   for (let dc = 0; dc < b.w; dc++) {
     for (let dr = 0; dr < b.h; dr++) {
       SUB_BUILDINGS.push({
         col: b.col + dc, row: b.row + dr, height: b.height,
-        top: b.top, left: b.left, right: b.right, isTour: b.isTour, isWhiteBldg: b.isWhiteBldg,
+        top: b.top, left: b.left, right: b.right, isTour: b.isTour,
         rx: dc, ry: dr, rw: b.w, rh: b.h
       });
     }
@@ -361,12 +370,13 @@ BUILDINGS_DATA.forEach(b => {
 //  ETAT DU JEU & RPG
 // ──────────────────────────────────────────────────────────────
 const player = {
-  col: 13.5, row: 20, targetCol: 13.5, targetRow: 20,
+  col: 8.5, row: 18, targetCol: 8.5, targetRow: 18,
   speed: 0.07, moving: false, walkDist: 0,
   outfit: { body:'#2255cc', pants:'#222222', shoes:'#884411', skin:'#f5c5a0' }
 };
 
 const rpg = { cash: 0, stock: 10, rep: 0, level: 1, xp: 0 };
+
 function getXpRequired() { return rpg.level * 100; }
 
 function updateHUD() {
@@ -422,6 +432,9 @@ function spawnNPC() {
 spawnNPC(); spawnNPC();
 setInterval(spawnNPC, 5000);
 
+// ──────────────────────────────────────────────────────────────
+//  LOGIQUE
+// ──────────────────────────────────────────────────────────────
 function movePlayer(dt) {
   if (!player.moving) return;
   const dc = player.targetCol - player.col;
@@ -442,9 +455,10 @@ function movePlayer(dt) {
     player.col = nx; player.row = ny;
     player.walkDist += step;
   } else {
-    player.moving = false;
+    player.moving = false; // Collision simple
   }
 
+  // Hook Sonore: Bruit de pas tous les ~0.8 unités isométriques
   if (player.walkDist > 0.8) {
     player.walkDist = 0;
     const tileType = RAW_MAP[Math.floor(player.row)][Math.floor(player.col)];
@@ -452,14 +466,17 @@ function movePlayer(dt) {
   }
 }
 
+// Interactions
 canvas.addEventListener('mousedown', e => {
   const rect = canvas.getBoundingClientRect();
   const sx = e.clientX - rect.left;
   const sy = e.clientY - rect.top;
   
+  // Projection souris -> Monde Isométrique
   const wx = sx - cw/2 + camera.x;
   const wy = sy - ch/2 + camera.y;
   
+  // Clic joueur ? (Raycast simplifié sur écran)
   const px = isoX(player.col, player.row) - camera.x + cw/2;
   const py = isoY(player.col, player.row) - camera.y + ch/2 - 20;
   if (Math.hypot(sx - px, sy - py) < 30) {
@@ -467,6 +484,7 @@ canvas.addEventListener('mousedown', e => {
     return;
   }
 
+  // Clic PNJ ?
   for (let i = 0; i < npcs.length; i++) {
     const n = npcs[i];
     const nx = isoX(n.col, n.row) - camera.x + cw/2;
@@ -477,14 +495,13 @@ canvas.addEventListener('mousedown', e => {
     }
   }
 
+  // Déplacement
   const grid = toGrid(wx, wy);
-  if (grid.col >= 0 && grid.row >= 0 && grid.col < MAP_COLS && grid.row < MAP_ROWS) {
-    if (!isSolid(Math.floor(grid.col), Math.floor(grid.row))) {
-      player.targetCol = grid.col;
-      player.targetRow = grid.row;
-      player.moving = true;
-      spawnClickFx(wx, wy);
-    }
+  if (!isSolid(Math.floor(grid.col), Math.floor(grid.row))) {
+    player.targetCol = grid.col;
+    player.targetRow = grid.row;
+    player.moving = true;
+    spawnClickFx(wx, wy);
   }
 });
 
@@ -493,14 +510,19 @@ function handleSale(npc, idx) {
   if (npc.sold) return;
   
   const price = 25 + Math.floor(Math.random() * 40);
-  rpg.cash += price; rpg.stock -= 1; rpg.rep += 1;
+  const xpGain = 35;
+  
+  rpg.cash += price;
+  rpg.stock -= 1;
+  rpg.rep += 1;
   npc.sold = true;
   
   showMsg(`Transaction réussie: +${price}€`);
   AudioEngine.onTransactionSuccess(price, rpg.rep);
-  gainXP(35);
+  gainXP(xpGain);
   
   setTimeout(() => npcs.splice(npcs.indexOf(npc), 1), 1500);
+  
   if (rpg.stock === 0) {
     setTimeout(() => { rpg.stock = 10; updateHUD(); showMsg('📦 Réappro effectuée !'); }, 6000);
   }
@@ -510,25 +532,14 @@ const clickFx = [];
 function spawnClickFx(wx, wy) { clickFx.push({ x: wx, y: wy, r: 2, life: 20 }); }
 
 // ──────────────────────────────────────────────────────────────
-//  RENDU GRAPHIQUE (Mise à jour visuelle experte)
+//  RENDU GRAPHIQUE
 // ──────────────────────────────────────────────────────────────
 const PALETTE = {
-  0: { t:'#B8BBC0', l:'#9AA0A6', r:'#A5AAB0' }, // Place de Bretagne (Clair/Pavés)
-  1: { t:'#15151D', l:'#0D0D12', r:'#111116' }, // Route sombre
-  2: { t:'#1C2A1C', l:'#121D12', r:'#162316' }, // Parc/Herbe
+  0: { t:'#1C1C24', l:'#13131A', r:'#171720' }, // Béton
+  1: { t:'#15151D', l:'#0D0D12', r:'#111116' }, // Route
+  2: { t:'#1C2A1C', l:'#121D12', r:'#162316' }, // Parc
   3: { t:'#20202A', l:'#15151E', r:'#1A1A24' }, // Trottoir
-  4: { t:'#AAB0B6', l:'#8E949B', r:'#989FA6' }  // Voie Tramway
 };
-
-// Vérifie si le joueur est caché derrière un grand volume
-function isPlayerBehind(worldX, worldY, height, toleranceWidth) {
-  const px = isoX(player.col, player.row);
-  const py = isoY(player.col, player.row);
-  const dx = Math.abs(px - worldX);
-  const dy = py - worldY;
-  // Le joueur est-il dans l'emprise visuelle (largeur) et verticalement "derrière" (plus haut sur l'écran = Y plus faible, mais dessiné avant)
-  return (dx < toleranceWidth && dy < 15 && dy > -height - 20);
-}
 
 function drawTile(c, r, type) {
   const x = isoX(c, r), y = isoY(c, r);
@@ -540,59 +551,23 @@ function drawTile(c, r, type) {
   ctx.lineTo(x, y + hh); ctx.lineTo(x - hw, y);
   ctx.closePath();
   ctx.fillStyle = col.t; ctx.fill();
-  
-  ctx.strokeStyle = (type === 0 || type === 4) ? 'rgba(0,0,0,0.05)' : 'rgba(255,255,255,0.02)';
+  ctx.strokeStyle = 'rgba(255,255,255,0.02)';
   ctx.lineWidth = 1; ctx.stroke();
   
-  // Lignes géométriques de la Place de Bretagne (Arcs de cercle)
-  if (type === 0) {
-    // Centre virtuel des arcs proche de la Tour
-    const distToCenter = Math.sqrt(Math.pow(c - 9, 2) + Math.pow(r - 11, 2));
-    if (distToCenter % 2.5 < 0.3) {
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.15)';
-      ctx.beginPath();
-      ctx.moveTo(x, y - hh + 4); ctx.lineTo(x + hw - 4, y);
-      ctx.lineTo(x, y + hh - 4); ctx.lineTo(x - hw + 4, y);
-      ctx.fill();
-    }
-  }
-
-  // Lignes du tramway
-  if (type === 4) {
-    ctx.strokeStyle = '#555A60';
-    ctx.lineWidth = 2;
-    // Rail gauche et droit isométriques
-    ctx.beginPath(); ctx.moveTo(x - hw/3, y - hh/3); ctx.lineTo(x + hw/3, y + hh/3); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x - hw/1.5, y - hh/1.5); ctx.lineTo(x + hw/1.5, y + hh/1.5); ctx.stroke();
+  // Détails sol
+  if (type === 1 && c % 4 === 0) {
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.beginPath(); ctx.ellipse(x, y, 4, 2, 0, 0, Math.PI*2); ctx.fill();
   }
 }
 
+// Dessin d'un bloc 1x1 parfait
 function drawBuildingBlock(b) {
   const top = { x: isoX(b.col, b.row), y: isoY(b.col, b.row) };
   const rgt = { x: isoX(b.col+1, b.row), y: isoY(b.col+1, b.row) };
   const bot = { x: isoX(b.col+1, b.row+1), y: isoY(b.col+1, b.row+1) };
   const lft = { x: isoX(b.col, b.row+1), y: isoY(b.col, b.row+1) };
-  let H = b.height;
-
-  // Gestion Opacité Dynamique
-  const isBehind = isPlayerBehind(bot.x, bot.y, H, TILE_W * 0.8);
-  ctx.globalAlpha = isBehind ? 0.3 : 1.0;
-
-  // Ombre portée au sol (uniquement sur le bord inférieur droit global)
-  if (b.ry === b.rh - 1 && b.rx === b.rw - 1) {
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-    ctx.beginPath();
-    ctx.moveTo(bot.x, bot.y); ctx.lineTo(bot.x + TILE_W, bot.y - TILE_H);
-    ctx.lineTo(lft.x + TILE_W, lft.y - TILE_H); ctx.lineTo(lft.x, lft.y);
-    ctx.fill();
-  }
-
-  // Surélévation blanche caractéristique en haut de la Tour de Bretagne
-  let drawWhiteTop = false;
-  if (b.isTour && b.rx >= 1 && b.rx <= 2 && b.ry >= 1 && b.ry <= 2) {
-    H += 35; 
-    drawWhiteTop = true;
-  }
+  const H = b.height;
 
   // Face Gauche
   ctx.fillStyle = b.left;
@@ -600,15 +575,6 @@ function drawBuildingBlock(b) {
   ctx.moveTo(lft.x, lft.y); ctx.lineTo(bot.x, bot.y);
   ctx.lineTo(bot.x, bot.y - H); ctx.lineTo(lft.x, lft.y - H);
   ctx.fill();
-  
-  // Piliers blancs caractéristiques de la Tour de Bretagne (arêtes extérieures)
-  if (b.isTour && !drawWhiteTop) {
-    ctx.fillStyle = '#E8ECEF';
-    if (b.rx === 0) { // Bordure gauche extrême
-      ctx.beginPath(); ctx.moveTo(lft.x, lft.y); ctx.lineTo(lft.x + 8, lft.y + 4);
-      ctx.lineTo(lft.x + 8, lft.y - H + 4); ctx.lineTo(lft.x, lft.y - H); ctx.fill();
-    }
-  }
 
   // Face Droite
   ctx.fillStyle = b.right;
@@ -617,77 +583,33 @@ function drawBuildingBlock(b) {
   ctx.lineTo(rgt.x, rgt.y - H); ctx.lineTo(bot.x, bot.y - H);
   ctx.fill();
 
-  if (b.isTour && !drawWhiteTop) {
-    ctx.fillStyle = '#DDE1E4';
-    if (b.ry === b.rh - 1) { // Bordure droite extrême
-      ctx.beginPath(); ctx.moveTo(rgt.x, rgt.y); ctx.lineTo(rgt.x - 8, rgt.y + 4);
-      ctx.lineTo(rgt.x - 8, rgt.y - H + 4); ctx.lineTo(rgt.x, rgt.y - H); ctx.fill();
-    }
-  }
-
   // Toit
-  ctx.fillStyle = drawWhiteTop ? '#F5F7F8' : b.top;
+  ctx.fillStyle = b.top;
   ctx.beginPath();
   ctx.moveTo(top.x, top.y - H); ctx.lineTo(rgt.x, rgt.y - H);
   ctx.lineTo(bot.x, bot.y - H); ctx.lineTo(lft.x, lft.y - H);
   ctx.fill();
-  ctx.strokeStyle = drawWhiteTop ? '#D0D5D9' : 'rgba(255,255,255,0.08)'; 
-  ctx.stroke();
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.stroke();
 
-  // Coloration spécifique bloc sommet Tour
-  if (drawWhiteTop) {
-    ctx.fillStyle = '#DDE1E4'; // Face gauche claire
-    ctx.beginPath(); ctx.moveTo(lft.x, lft.y - H + 35); ctx.lineTo(bot.x, bot.y - H + 35);
-    ctx.lineTo(bot.x, bot.y - H); ctx.lineTo(lft.x, lft.y - H); ctx.fill();
-    ctx.fillStyle = '#C8CDD2'; // Face droite claire
-    ctx.beginPath(); ctx.moveTo(bot.x, bot.y - H + 35); ctx.lineTo(rgt.x, rgt.y - H + 35);
-    ctx.lineTo(rgt.x, rgt.y - H); ctx.lineTo(bot.x, bot.y - H); ctx.fill();
+  // Détails fenêtres dynamiques
+  if (b.ry === b.rh - 1 && !b.isTour && Math.random() > 0.3) {
+    ctx.fillStyle = Math.random() > 0.8 ? '#ffe87a' : '#111520';
+    ctx.fillRect(lft.x + 8, lft.y - H/2, 6, 8);
   }
-
-  // Fenêtres régulières (sauf sur la tour qui est un bloc vitré noir continu)
-  if (b.isWhiteBldg && b.ry === b.rh - 1) {
-    ctx.fillStyle = '#2A3035'; // Vitres sombres encastrées
-    for(let w = 0; w < 3; w++) {
-      ctx.fillRect(lft.x + 6 + (w*10), lft.y - H/1.2, 5, H/1.5);
-    }
-  }
-
-  // Antenne Tour Bretagne
-  if (b.isTour && b.rx === 1 && b.ry === 1) {
-    ctx.strokeStyle = '#222'; ctx.lineWidth = 3;
-    ctx.beginPath(); ctx.moveTo(top.x, top.y - H); ctx.lineTo(top.x, top.y - H - 55); ctx.stroke();
-  }
-
-  ctx.globalAlpha = 1.0;
-}
-
-function drawTree(t) {
-  const x = isoX(t.col, t.row);
-  const y = isoY(t.col, t.row);
   
-  const isBehind = isPlayerBehind(x, y, 60, 40);
-  ctx.globalAlpha = isBehind ? 0.3 : 1.0;
-
-  // Ombre
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.3)';
-  ctx.beginPath(); ctx.ellipse(x, y + 4, 16, 8, 0, 0, Math.PI*2); ctx.fill();
-
-  // Tronc
-  ctx.fillStyle = '#3A2E24';
-  ctx.fillRect(x - 3, y - 15, 6, 15);
-
-  // Feuillage volumétrique géométrique (3 disques empilés)
-  ctx.fillStyle = '#1B3522'; ctx.beginPath(); ctx.ellipse(x, y - 25, 22, 14, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#22422A'; ctx.beginPath(); ctx.ellipse(x, y - 38, 18, 12, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#2A5234'; ctx.beginPath(); ctx.ellipse(x, y - 50, 12, 8, 0, 0, Math.PI*2); ctx.fill();
-
-  ctx.globalAlpha = 1.0;
+  // Antenne Tour Bretagne (uniquement sur le bloc central haut)
+  if (b.isTour && b.rx === 1 && b.ry === 1) {
+    ctx.strokeStyle = '#aaa'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(top.x, top.y - H); ctx.lineTo(top.x, top.y - H - 40); ctx.stroke();
+    ctx.fillStyle = '#f44'; ctx.fillRect(top.x-1, top.y - H - 45, 3, 5);
+  }
 }
 
 function drawEntity(x, y, isPlayer, outfit, blink, sold) {
   ctx.save();
   ctx.translate(x, y);
   
+  // Ombre
   ctx.fillStyle = 'rgba(0,0,0,0.4)';
   ctx.beginPath(); ctx.ellipse(0, 0, 10, 5, 0, 0, Math.PI*2); ctx.fill();
 
@@ -712,6 +634,7 @@ function drawEntity(x, y, isPlayer, outfit, blink, sold) {
   ctx.restore();
 }
 
+// Boucle de rendu
 function render() {
   updateCamera();
 
@@ -719,6 +642,7 @@ function render() {
   ctx.fillRect(0, 0, cw, ch);
 
   ctx.save();
+  // Application de la caméra
   ctx.translate(cw/2 - camera.x, ch/2 - camera.y);
 
   // 1. Sol
@@ -729,17 +653,14 @@ function render() {
     }
   }
 
-  // 2. Préparation du Y-Sort
+  // 2. Préparation du Y-Sort (Entités + Piliers de Bâtiments)
   const renderList = [];
   
   SUB_BUILDINGS.forEach(b => {
+    // Le point le plus bas du pilier 1x1 est (col+1, row+1)
     renderList.push({ sortKey: b.col + b.row + 2, type: 'bldg', data: b });
   });
   
-  TREES_DATA.forEach(t => {
-    renderList.push({ sortKey: t.col + t.row + 0.5, type: 'tree', data: t });
-  });
-
   renderList.push({ sortKey: player.col + player.row, type: 'player' });
   
   npcs.forEach(n => {
@@ -754,8 +675,6 @@ function render() {
   renderList.forEach(item => {
     if (item.type === 'bldg') {
       drawBuildingBlock(item.data);
-    } else if (item.type === 'tree') {
-      drawTree(item.data);
     } else if (item.type === 'player') {
       drawEntity(isoX(player.col, player.row), isoY(player.col, player.row), true, player.outfit);
     } else if (item.type === 'npc') {
