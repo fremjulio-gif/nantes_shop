@@ -234,15 +234,14 @@ function isSolid(c, r) {
 
 const BUILDINGS_DATA = [
   // Périphérie
-  { col:0, row:0, w:8, h:4, height:80, top:'#3C3F43', left:'#94979A', right:'#A5A8AC' },
-  { col:10, row:0, w:6, h:4, height:70, top:'#45484D', left:'#A5A8AC', right:'#B6B9BD' },
-  { col:18, row:4, w:8, h:5, height:90, top:'#303236', left:'#B6B9BD', right:'#C7CACF' },
-  { col:0, row:21, w:3, h:5, height:65, top:'#4A4D52', left:'#94979A', right:'#A5A8AC' },
+  { col:0, row:0, w:8, h:4, height:80, top:'#3C3F43', left:'#94979A', right:'#A5A8AC' }, // On garde le fond à gauche
+  // --- LES DEUX LIGNES SUPPRIMÉES ÉTAIENT ICI ---
+  { col:0, row:21, w:3, h:5, height:65, top:'#4A4D52', left:'#94979A', right:'#A5A8AC' }, // On garde le premier plan gauche
   // Bâtiment Finances Publiques / Salle de Sport (Façade claire)
   { col:20, row:15, w:6, h:6, height:60, top:'#35383D', left:'#D9DADD', right:'#EAEBEE', isWhiteBldg:true },
   // Tour Bretagne - Socle Large
   { col:4, row:11, w:6, h:6, height:35, top:'#D1D3D6', left:'#A5A8AC', right:'#B6B9BD' },
-  // Tour Bretagne - Tour Principale (Façade noire, piliers blancs)
+  // Tour Bretagne - Tour Principale
   { col:5, row:12, w:4, h:4, height:380, top:'#FFFFFF', left:'#1E1F21', right:'#26282B', isTour:true }
 ];
 
