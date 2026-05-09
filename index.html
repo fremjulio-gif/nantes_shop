@@ -3,842 +3,728 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nantes Underground – Place de Bretagne</title>
+<title>Nantes Underground – V2</title>
 <style>
+  :root {
+    --bg-dark: #0a0a12;
+    --glass-bg: rgba(15, 15, 22, 0.6);
+    --glass-border: rgba(255, 255, 255, 0.08);
+    --accent: #e8c84a;
+    --text-main: #e2e2ee;
+    --text-dim: #888899;
+    --success: #7ef77e;
+  }
+
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
-    background: #0a0a12;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    min-height: 100vh;
-    font-family: 'Courier New', monospace;
+    background: var(--bg-dark);
+    font-family: 'Courier New', Courier, monospace;
     overflow: hidden;
     user-select: none;
+    color: var(--text-main);
   }
- 
-  /* ── HUD ── */
-  #hud {
-    position: fixed;
-    top: 0; left: 0; right: 0;
-    display: flex;
-    align-items: center;
-    gap: 24px;
-    padding: 8px 16px;
-    background: rgba(0,0,0,0.85);
-    border-bottom: 1px solid #2a2a3a;
+
+  /* ── INTERFACE GLASSMORPHISM ── */
+  .ui-layer {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none;
     z-index: 100;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 20px;
   }
-  #hud .logo {
-    color: #e8c84a;
-    font-size: 13px;
+
+  .hud-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+
+  .glass-panel {
+    background: var(--glass-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    padding: 16px 24px;
+    pointer-events: auto;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+    transition: all 0.3s ease;
+  }
+
+  /* ── INFOS RPG (Gauche) ── */
+  .rpg-info {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-width: 250px;
+  }
+  .player-title {
+    font-size: 14px;
     font-weight: bold;
+    color: var(--accent);
     letter-spacing: 2px;
     text-transform: uppercase;
   }
-  .hud-stat {
+  .xp-container {
+    width: 100%;
+  }
+  .xp-labels {
     display: flex;
-    align-items: center;
-    gap: 6px;
-    color: #ccc;
-    font-size: 12px;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 6px;
   }
-  .hud-stat .label { color: #666; text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
-  .hud-stat .value { color: #7ef77e; font-weight: bold; font-size: 14px; }
-  .hud-stat .value.cash { color: #e8c84a; }
-  .hud-stat .value.rep  { color: #f87; }
- 
-  #message-bar {
-    position: fixed;
-    bottom: 16px; left: 50%; transform: translateX(-50%);
-    background: rgba(0,0,0,0.82);
-    border: 1px solid #3a3a5a;
-    color: #ddd;
-    font-size: 12px;
-    padding: 6px 18px;
+  .xp-bar-bg {
+    width: 100%;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.5);
     border-radius: 3px;
-    pointer-events: none;
-    transition: opacity 0.4s;
-    z-index: 200;
-    letter-spacing: 0.5px;
+    overflow: hidden;
   }
- 
-  /* ── CANVAS ── */
-  #gameCanvas {
+  .xp-bar-fill {
+    height: 100%;
+    background: var(--accent);
+    width: 0%;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 0 10px var(--accent);
+  }
+
+  /* ── STATS INVENTAIRE (Droite) ── */
+  .stats-grid {
+    display: flex;
+    gap: 24px;
+  }
+  .stat-box {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+  }
+  .stat-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
+  .stat-value { font-size: 18px; font-weight: bold; margin-top: 4px; }
+  .stat-value.cash { color: var(--accent); }
+  .stat-value.rep { color: #f87; }
+
+  /* ── MESSAGES SYSTEME ── */
+  .hud-bottom {
+    display: flex;
+    justify-content: center;
+    padding-bottom: 20px;
+  }
+  #message-bar {
+    background: rgba(10, 10, 15, 0.85);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    color: #fff;
+    font-size: 13px;
+    padding: 10px 24px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+    text-align: center;
+  }
+  #message-bar.visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  /* ── CUSTOMIZATION PANEL ── */
+  #custom-panel {
+    display: none;
+    position: absolute;
+    top: 50%; left: 50%; transform: translate(-50%, -50%);
+    min-width: 260px;
+    z-index: 200;
+  }
+  .color-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .color-row label { font-size: 12px; color: var(--text-main); text-transform: uppercase; letter-spacing: 1px; }
+  .color-row input[type=color] {
+    width: 40px; height: 28px;
+    border: none; background: transparent; cursor: pointer;
+  }
+  .btn-close {
+    width: 100%;
+    background: var(--accent);
+    color: #000;
+    border: none;
+    padding: 10px;
+    border-radius: 4px;
+    font-family: inherit;
+    font-weight: bold;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: background 0.2s;
+  }
+  .btn-close:hover { background: #fff; }
+
+  canvas {
     display: block;
     cursor: crosshair;
     image-rendering: pixelated;
-    image-rendering: crisp-edges;
-    margin-top: 36px;
   }
- 
-  /* ── PANEL CUSTOMISATION ── */
-  #custom-panel {
-    display: none;
-    position: fixed;
-    top: 50%; left: 50%; transform: translate(-50%,-50%);
-    background: #111118;
-    border: 1px solid #444;
-    padding: 20px;
-    z-index: 300;
-    color: #ccc;
-    font-size: 12px;
-    min-width: 220px;
-    box-shadow: 0 0 40px rgba(0,0,0,0.9);
+  
+  .controls-hint {
+    position: absolute;
+    bottom: 20px; left: 20px;
+    font-size: 10px; color: var(--text-dim);
   }
-  #custom-panel h3 {
-    color: #e8c84a;
-    font-size: 13px;
-    letter-spacing: 2px;
-    margin-bottom: 14px;
-    text-transform: uppercase;
-  }
-  .color-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
-  .color-row label { width: 80px; color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
-  .color-row input[type=color] {
-    width: 36px; height: 24px;
-    border: 1px solid #444; background: none; cursor: pointer; padding: 1px;
-  }
-  #close-panel {
-    margin-top: 12px;
-    width: 100%;
-    background: #e8c84a; color: #000;
-    border: none; padding: 6px;
-    cursor: pointer; font-family: inherit;
-    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
-    font-weight: bold;
-  }
-  #close-panel:hover { background: #fff; }
 </style>
 </head>
 <body>
- 
-<!-- HUD -->
-<div id="hud">
-  <span class="logo">🏙 Nantes Underground</span>
-  <div class="hud-stat">
-    <span class="label">Cash</span>
-    <span class="value cash" id="stat-cash">0 €</span>
+
+<div class="ui-layer">
+  <div class="hud-top">
+    <div class="glass-panel rpg-info">
+      <div class="player-title">Nantes Underground</div>
+      <div class="xp-container">
+        <div class="xp-labels">
+          <span id="ui-level">Niveau 1</span>
+          <span id="ui-xp-text">0 / 100 XP</span>
+        </div>
+        <div class="xp-bar-bg">
+          <div class="xp-bar-fill" id="ui-xp-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="glass-panel stats-grid">
+      <div class="stat-box">
+        <span class="stat-label">Cash</span>
+        <span class="stat-value cash" id="ui-cash">0 €</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Stock</span>
+        <span class="stat-value" id="ui-stock">10 u</span>
+      </div>
+      <div class="stat-box">
+        <span class="stat-label">Réputation</span>
+        <span class="stat-value rep" id="ui-rep">0</span>
+      </div>
+    </div>
   </div>
-  <div class="hud-stat">
-    <span class="label">Stock</span>
-    <span class="value" id="stat-stock">10 u</span>
+
+  <div class="hud-bottom">
+    <div id="message-bar">Bienvenue dans l'Underground.</div>
   </div>
-  <div class="hud-stat">
-    <span class="label">Rep</span>
-    <span class="value rep" id="stat-rep">0</span>
-  </div>
-  <div class="hud-stat" style="margin-left:auto;">
-    <span class="label" style="color:#555; font-size:10px;">CLIC SUR JOUEUR → tenue | CLIC SOL → déplacer | CLIC CLIENT → vendre</span>
-  </div>
+  
+  <div class="controls-hint">CLIC: Déplacement / Vente | JOUEUR: Tenue</div>
 </div>
- 
-<!-- Panneau personnalisation -->
-<div id="custom-panel">
-  <h3>🎨 Tenue</h3>
-  <div class="color-row">
-    <label>Corps</label>
-    <input type="color" id="col-body" value="#2255cc">
-  </div>
-  <div class="color-row">
-    <label>Pantalon</label>
-    <input type="color" id="col-pants" value="#222222">
-  </div>
-  <div class="color-row">
-    <label>Chaussures</label>
-    <input type="color" id="col-shoes" value="#884411">
-  </div>
-  <div class="color-row">
-    <label>Peau</label>
-    <input type="color" id="col-skin" value="#f5c5a0">
-  </div>
-  <button id="close-panel">Fermer</button>
+
+<div class="glass-panel" id="custom-panel">
+  <div class="player-title" style="margin-bottom: 20px; text-align: center;">Personnalisation</div>
+  <div class="color-row"><label>Veste</label><input type="color" id="col-body" value="#2255cc"></div>
+  <div class="color-row"><label>Pantalon</label><input type="color" id="col-pants" value="#222222"></div>
+  <div class="color-row"><label>Chaussures</label><input type="color" id="col-shoes" value="#884411"></div>
+  <div class="color-row"><label>Peau</label><input type="color" id="col-skin" value="#f5c5a0"></div>
+  <button class="btn-close" id="close-panel">CONFIRMER</button>
 </div>
- 
+
 <canvas id="gameCanvas"></canvas>
-<div id="message-bar">Bienvenue à la Place de Bretagne.</div>
- 
+
 <script>
 // ═══════════════════════════════════════════════════════════════
-//  NANTES UNDERGROUND – Place de Bretagne  (single-file RPG)
-//  Rendu isométrique 2D · Canvas API · Vanilla JS
+//  NANTES UNDERGROUND V2 – Moteur Isométrique & RPG
 // ═══════════════════════════════════════════════════════════════
- 
-const canvas  = document.getElementById('gameCanvas');
-const ctx     = canvas.getContext('2d');
- 
+
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d', { alpha: false });
+
 // ──────────────────────────────────────────────────────────────
-//  1. CONSTANTES ISOMÉTRIQUES
+//  AUDIO HOOKS (Pour Sound Design Externe)
 // ──────────────────────────────────────────────────────────────
-const TILE_W  = 64;   // largeur d'une tuile iso
-const TILE_H  = 32;   // hauteur d'une tuile iso
+const AudioEngine = {
+  onTransactionSuccess(price, newXp) {
+    // Joué lors d'une vente (ex: SFX caisse, monnaie)
+    // console.log(`[AUDIO] Vente: +${price}€`);
+  },
+  onLevelUp(newLevel) {
+    // Joué au passage de niveau (ex: Stinger épique, UI swell)
+    // console.log(`[AUDIO] Level UP! -> ${newLevel}`);
+  },
+  onStep(surfaceId) {
+    // Joué à chaque pas.
+    // 0: Béton, 1: Route, 2: Herbe/Parc, 3: Trottoir gravier
+    // Idéal pour une logique de random container dans FMOD/Wwise
+  },
+  onCameraMove(speedX, speedY) {
+    // Hook continu pour moduler le bruit de fond (vent, trafic)
+    // selon la vélocité de la caméra.
+  }
+};
+
+// ──────────────────────────────────────────────────────────────
+//  GEOMETRIE & CAMERA
+// ──────────────────────────────────────────────────────────────
+const TILE_W = 64;
+const TILE_H = 32;
 const MAP_COLS = 24;
 const MAP_ROWS = 24;
- 
-// Origine (centre écran)
-let originX, originY;
- 
+
+let cw, ch;
 function resize() {
-  canvas.width  = window.innerWidth;
-  canvas.height = window.innerHeight - 36;
-  originX = canvas.width  / 2;
-  originY = canvas.height / 2 - TILE_H;
+  cw = window.innerWidth;
+  ch = window.innerHeight;
+  canvas.width = cw;
+  canvas.height = ch;
 }
-resize();
 window.addEventListener('resize', resize);
- 
-// Conversion grille → écran (isométrique)
-function toScreen(col, row) {
-  return {
-    x: originX + (col - row) * (TILE_W / 2),
-    y: originY + (col + row) * (TILE_H / 2)
-  };
+resize();
+
+// Conversion purement géométrique (indépendante de l'écran)
+function isoX(col, row) { return (col - row) * (TILE_W / 2); }
+function isoY(col, row) { return (col + row) * (TILE_H / 2); }
+
+function toGrid(wx, wy) {
+  const col = (wx / (TILE_W / 2) + wy / (TILE_H / 2)) / 2;
+  const row = (wy / (TILE_H / 2) - wx / (TILE_W / 2)) / 2;
+  return { col, row };
 }
- 
-// Conversion clic écran → grille (approx)
-function toGrid(sx, sy) {
-  const dx = sx - originX;
-  const dy = sy - originY;
-  const col = (dx / (TILE_W / 2) + dy / (TILE_H / 2)) / 2;
-  const row = (dy / (TILE_H / 2) - dx / (TILE_W / 2)) / 2;
-  return { col: Math.round(col), row: Math.round(row) };
+
+// Caméra (Smooth Follow)
+const camera = { x: 0, y: 0 };
+
+function updateCamera() {
+  const targetX = isoX(player.col, player.row);
+  const targetY = isoY(player.col, player.row) - 30; // Offset visuel
+  
+  const dx = targetX - camera.x;
+  const dy = targetY - camera.y;
+  
+  // Lerp (interpolation)
+  camera.x += dx * 0.06;
+  camera.y += dy * 0.06;
+
+  if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
+    AudioEngine.onCameraMove(dx * 0.06, dy * 0.06);
+  }
 }
- 
+
 // ──────────────────────────────────────────────────────────────
-//  2. CARTE (MAP) — tilemap 2D
-//  0 = sol béton, 1 = route, 2 = parc/herbe, 3 = trottoir
-//  9 = bâtiment ordinaire (solide), 8 = Tour Bretagne (solide)
+//  CARTE ET BATIMENTS
 // ──────────────────────────────────────────────────────────────
- 
 // prettier-ignore
 const RAW_MAP = [
-//  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23
-  [ 9, 9, 9, 9, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 9, 9, 9, 9], // 0
-  [ 9, 9, 9, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 9, 9, 9], // 1
-  [ 9, 9, 3, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 3, 9, 9], // 2
-  [ 9, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 9], // 3
-  [ 3, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 3], // 4
-  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], // 5
-  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], // 6
-  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1], // 7
-  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1], // 8
-  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3], // 9
-  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3], // 10
-  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 8, 8, 8, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3], // 11
-  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 8, 8, 8, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3], // 12
-  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 8, 8, 8, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3], // 13
-  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3], // 14
-  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1], // 15
-  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1], // 16
-  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], // 17
-  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], // 18
-  [ 3, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 3], // 19
-  [ 9, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 9], // 20
-  [ 9, 9, 3, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 3, 9, 9], // 21
-  [ 9, 9, 9, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 9, 9, 9], // 22
-  [ 9, 9, 9, 9, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 9, 9, 9, 9], // 23
+  [ 9, 9, 9, 9, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 9, 9, 9, 9],
+  [ 9, 9, 9, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 9, 9, 9],
+  [ 9, 9, 3, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 3, 9, 9],
+  [ 9, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 9],
+  [ 3, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 3],
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1],
+  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1],
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3],
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3],
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 8, 8, 8, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3],
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 8, 8, 8, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3],
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 8, 8, 8, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3],
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3],
+  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1],
+  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1],
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [ 3, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 3],
+  [ 9, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 9],
+  [ 9, 9, 3, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 3, 9, 9],
+  [ 9, 9, 9, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 9, 9, 9],
+  [ 9, 9, 9, 9, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 9, 9, 9, 9]
 ];
- 
-// Tuiles solides (obstacles)
+
 const SOLID = new Set([8, 9]);
- 
-function isSolid(col, row) {
-  if (col < 0 || row < 0 || col >= MAP_COLS || row >= MAP_ROWS) return true;
-  return SOLID.has(RAW_MAP[row][col]);
+function isSolid(c, r) {
+  if (c < 0 || r < 0 || c >= MAP_COLS || r >= MAP_ROWS) return true;
+  return SOLID.has(RAW_MAP[r][c]);
 }
- 
-// ──────────────────────────────────────────────────────────────
-//  3. BÂTIMENTS (données pour le rendu 3D iso)
-// ──────────────────────────────────────────────────────────────
- 
-// Chaque bâtiment : {col, row, w, h (en tuiles), height (px), colorTop, colorLeft, colorRight, label?}
-const BUILDINGS = [
-  // Immeubles nord-ouest
-  { col:0,  row:0, w:3, h:4, height:60, top:'#4a5a6a', left:'#2d3d4d', right:'#3a4a5a' },
-  { col:3,  row:0, w:2, h:3, height:50, top:'#5a6a5a', left:'#3d4d3d', right:'#4a5a4a' },
-  // Immeubles nord-est
-  { col:19, row:0, w:3, h:4, height:55, top:'#6a5a4a', left:'#4d3d2d', right:'#5a4a3a' },
-  { col:21, row:0, w:3, h:3, height:45, top:'#5a6a5a', left:'#3d4d3d', right:'#4a5a4a' },
-  // Immeubles sud-ouest
-  { col:0,  row:19, w:3, h:4, height:50, top:'#4a6a5a', left:'#2d4d3d', right:'#3a5a4a' },
-  { col:3,  row:20, w:2, h:4, height:42, top:'#6a4a5a', left:'#4d2d3d', right:'#5a3a4a' },
-  // Immeubles sud-est
-  { col:19, row:19, w:3, h:4, height:55, top:'#5a4a6a', left:'#3d2d4d', right:'#4a3a5a' },
-  { col:21, row:20, w:3, h:4, height:48, top:'#4a5a6a', left:'#2d3d4d', right:'#3a4a5a' },
-  // TOUR BRETAGNE — centre — grande
-  { col:10, row:11, w:3, h:3, height:220, top:'#c8d8e8', left:'#6080a0', right:'#8090b0', isTour:true },
+
+const BUILDINGS_DATA = [
+  { col:0, row:0, w:3, h:4, height:70, top:'#2A2E35', left:'#1D2025', right:'#23262C' },
+  { col:3, row:0, w:2, h:3, height:55, top:'#353B3E', left:'#25292C', right:'#2D3235' },
+  { col:19, row:0, w:3, h:4, height:65, top:'#2E2A28', left:'#201D1C', right:'#262322' },
+  { col:21, row:0, w:3, h:3, height:50, top:'#353E3B', left:'#252C2A', right:'#2D3532' },
+  { col:0, row:19, w:3, h:4, height:60, top:'#28302D', left:'#1C2220', right:'#222926' },
+  { col:3, row:20, w:2, h:4, height:48, top:'#3E353B', left:'#2C252A', right:'#352D32' },
+  { col:19, row:19, w:3, h:4, height:65, top:'#302835', left:'#221C25', right:'#29222D' },
+  { col:21, row:20, w:3, h:4, height:58, top:'#2A2E35', left:'#1D2025', right:'#23262C' },
+  { col:10, row:11, w:3, h:3, height:260, top:'#8AA4C4', left:'#4B6382', right:'#607D9E', isTour:true }
 ];
- 
+
+// Compilation des bâtiments en blocs 1x1 pour un Y-Sort géométriquement parfait
+const SUB_BUILDINGS = [];
+BUILDINGS_DATA.forEach(b => {
+  for (let dc = 0; dc < b.w; dc++) {
+    for (let dr = 0; dr < b.h; dr++) {
+      SUB_BUILDINGS.push({
+        col: b.col + dc, row: b.row + dr, height: b.height,
+        top: b.top, left: b.left, right: b.right, isTour: b.isTour,
+        rx: dc, ry: dr, rw: b.w, rh: b.h
+      });
+    }
+  }
+});
+
 // ──────────────────────────────────────────────────────────────
-//  4. ÉTAT DU JOUEUR
+//  ETAT DU JEU & RPG
 // ──────────────────────────────────────────────────────────────
 const player = {
-  col: 8.5, row: 18,    // position grille (float)
-  targetCol: 8.5, targetRow: 18,
-  speed: 0.06,          // tuiles/frame
-  moving: false,
-  outfit: { body:'#2255cc', pants:'#222222', shoes:'#884411', skin:'#f5c5a0' },
+  col: 8.5, row: 18, targetCol: 8.5, targetRow: 18,
+  speed: 0.07, moving: false, walkDist: 0,
+  outfit: { body:'#2255cc', pants:'#222222', shoes:'#884411', skin:'#f5c5a0' }
 };
- 
-// ──────────────────────────────────────────────────────────────
-//  5. ÉTAT RPG
-// ──────────────────────────────────────────────────────────────
-const rpg = { cash: 0, stock: 10, rep: 0 };
- 
+
+const rpg = { cash: 0, stock: 10, rep: 0, level: 1, xp: 0 };
+
+function getXpRequired() { return rpg.level * 100; }
+
 function updateHUD() {
-  document.getElementById('stat-cash').textContent  = rpg.cash  + ' €';
-  document.getElementById('stat-stock').textContent = rpg.stock + ' u';
-  document.getElementById('stat-rep').textContent   = rpg.rep;
+  document.getElementById('ui-cash').textContent = rpg.cash + ' €';
+  document.getElementById('ui-stock').textContent = rpg.stock + ' u';
+  document.getElementById('ui-rep').textContent = rpg.rep;
+  
+  const req = getXpRequired();
+  document.getElementById('ui-level').textContent = 'Niveau ' + rpg.level;
+  document.getElementById('ui-xp-text').textContent = `${rpg.xp} / ${req} XP`;
+  document.getElementById('ui-xp-fill').style.width = Math.min((rpg.xp / req) * 100, 100) + '%';
 }
-updateHUD();
- 
-// ──────────────────────────────────────────────────────────────
-//  6. PNJ / CLIENTS
-// ──────────────────────────────────────────────────────────────
-const WALKABLE_SPOTS = [];
-for (let r = 0; r < MAP_ROWS; r++)
-  for (let c = 0; c < MAP_COLS; c++)
-    if (!isSolid(c, r)) WALKABLE_SPOTS.push({col:c, row:r});
- 
-function randSpot() {
-  return WALKABLE_SPOTS[Math.floor(Math.random() * WALKABLE_SPOTS.length)];
+
+function gainXP(amount) {
+  rpg.xp += amount;
+  let req = getXpRequired();
+  if (rpg.xp >= req) {
+    rpg.xp -= req;
+    rpg.level++;
+    showMsg(`🌟 LEVEL UP ! Tu es niveau ${rpg.level} !`, 4000);
+    AudioEngine.onLevelUp(rpg.level);
+  }
+  updateHUD();
 }
- 
-const npcs = [];
- 
-function spawnNPC() {
-  if (npcs.length >= 4) return;
-  const spot = randSpot();
-  npcs.push({
-    col: spot.col, row: spot.row,
-    kind: 'client',
-    blink: 0,
-    sold: false,
-    waitTimer: 400 + Math.random() * 400, // frames avant de partir
-    skin: `hsl(${Math.random()*360|0},40%,60%)`,
-  });
-}
- 
-// Premier client immédiat
-spawnNPC();
-setInterval(spawnNPC, 4000);
- 
-// ──────────────────────────────────────────────────────────────
-//  7. MESSAGE BAR
-// ──────────────────────────────────────────────────────────────
-let msgTimer = 0;
+
 const msgEl = document.getElementById('message-bar');
- 
+let msgTimer = null;
 function showMsg(txt, ms = 3000) {
   msgEl.textContent = txt;
-  msgEl.style.opacity = '1';
-  msgTimer = ms;
+  msgEl.classList.add('visible');
+  clearTimeout(msgTimer);
+  msgTimer = setTimeout(() => msgEl.classList.remove('visible'), ms);
 }
- 
+
 // ──────────────────────────────────────────────────────────────
-//  8. PATHFINDING (mouvement linéaire avec évitement simple)
+//  PNJ
+// ──────────────────────────────────────────────────────────────
+const npcs = [];
+function spawnNPC() {
+  if (npcs.length >= 5) return;
+  let c, r;
+  do {
+    c = Math.floor(Math.random() * MAP_COLS);
+    r = Math.floor(Math.random() * MAP_ROWS);
+  } while (isSolid(c, r));
+  
+  npcs.push({
+    col: c + 0.5, row: r + 0.5, sold: false, blink: 0,
+    waitTimer: 600 + Math.random() * 400,
+    skin: `hsl(${Math.random()*360|0},40%,50%)`
+  });
+}
+spawnNPC(); spawnNPC();
+setInterval(spawnNPC, 5000);
+
+// ──────────────────────────────────────────────────────────────
+//  LOGIQUE
 // ──────────────────────────────────────────────────────────────
 function movePlayer(dt) {
   if (!player.moving) return;
   const dc = player.targetCol - player.col;
   const dr = player.targetRow - player.row;
   const dist = Math.sqrt(dc*dc + dr*dr);
-  if (dist < 0.08) {
-    player.col = player.targetCol;
-    player.row = player.targetRow;
+  
+  if (dist < 0.05) {
+    player.col = player.targetCol; player.row = player.targetRow;
     player.moving = false;
     return;
   }
+  
   const step = player.speed;
   const nx = player.col + (dc / dist) * step;
   const ny = player.row + (dr / dist) * step;
-  // Évitement simple : ne pas entrer dans un solide
-  if (!isSolid(Math.round(nx), Math.round(ny))) {
+  
+  if (!isSolid(Math.floor(nx), Math.floor(ny))) {
     player.col = nx; player.row = ny;
-  } else if (!isSolid(Math.round(nx), Math.round(player.row))) {
-    player.col = nx;
-  } else if (!isSolid(Math.round(player.col), Math.round(ny))) {
-    player.row = ny;
+    player.walkDist += step;
   } else {
-    player.moving = false; // bloqué
+    player.moving = false; // Collision simple
+  }
+
+  // Hook Sonore: Bruit de pas tous les ~0.8 unités isométriques
+  if (player.walkDist > 0.8) {
+    player.walkDist = 0;
+    const tileType = RAW_MAP[Math.floor(player.row)][Math.floor(player.col)];
+    AudioEngine.onStep(tileType);
   }
 }
- 
-// ──────────────────────────────────────────────────────────────
-//  9. CLIC SUR LE CANVAS
-// ──────────────────────────────────────────────────────────────
-canvas.addEventListener('click', e => {
+
+// Interactions
+canvas.addEventListener('mousedown', e => {
   const rect = canvas.getBoundingClientRect();
   const sx = e.clientX - rect.left;
   const sy = e.clientY - rect.top;
- 
-  // ── a) Clic sur joueur ?
-  const pSc = toScreen(player.col, player.row);
-  const dx = sx - pSc.x, dy = sy - (pSc.y - 20);
-  if (Math.abs(dx) < 18 && Math.abs(dy) < 28) {
+  
+  // Projection souris -> Monde Isométrique
+  const wx = sx - cw/2 + camera.x;
+  const wy = sy - ch/2 + camera.y;
+  
+  // Clic joueur ? (Raycast simplifié sur écran)
+  const px = isoX(player.col, player.row) - camera.x + cw/2;
+  const py = isoY(player.col, player.row) - camera.y + ch/2 - 20;
+  if (Math.hypot(sx - px, sy - py) < 30) {
     document.getElementById('custom-panel').style.display = 'block';
     return;
   }
- 
-  // ── b) Clic sur un NPC ?
+
+  // Clic PNJ ?
   for (let i = 0; i < npcs.length; i++) {
     const n = npcs[i];
-    const ns = toScreen(n.col, n.row);
-    const nx2 = sx - ns.x, ny2 = sy - (ns.y - 16);
-    if (Math.abs(nx2) < 16 && Math.abs(ny2) < 24) {
-      sellToNPC(n, i);
+    const nx = isoX(n.col, n.row) - camera.x + cw/2;
+    const ny = isoY(n.col, n.row) - camera.y + ch/2 - 20;
+    if (Math.hypot(sx - nx, sy - ny) < 25) {
+      handleSale(n, i);
       return;
     }
   }
- 
-  // ── c) Déplacement vers le sol
-  const g = toGrid(sx, sy);
-  if (!isSolid(g.col, g.row)) {
-    player.targetCol = g.col;
-    player.targetRow = g.row;
+
+  // Déplacement
+  const grid = toGrid(wx, wy);
+  if (!isSolid(Math.floor(grid.col), Math.floor(grid.row))) {
+    player.targetCol = grid.col;
+    player.targetRow = grid.row;
     player.moving = true;
-    spawnClickFx(sx, sy);
+    spawnClickFx(wx, wy);
   }
 });
- 
-// Vente à un NPC
-function sellToNPC(npc, idx) {
-  if (rpg.stock <= 0) { showMsg('Stock épuisé ! Reviens plus tard.'); return; }
-  if (npc.sold) { showMsg('Ce client a déjà été servi.'); return; }
-  const price = 20 + Math.floor(Math.random() * 30);
-  rpg.cash  += price;
+
+function handleSale(npc, idx) {
+  if (rpg.stock <= 0) { showMsg("Stock épuisé !"); return; }
+  if (npc.sold) return;
+  
+  const price = 25 + Math.floor(Math.random() * 40);
+  const xpGain = 35;
+  
+  rpg.cash += price;
   rpg.stock -= 1;
-  rpg.rep   += 1;
+  rpg.rep += 1;
   npc.sold = true;
-  updateHUD();
-  showMsg(`+${price} € 💰  Stock restant : ${rpg.stock}`);
-  // Le NPC repart après vente
-  setTimeout(() => { npcs.splice(idx, 1); }, 1500);
- 
-  // Restockage automatique
+  
+  showMsg(`Transaction réussie: +${price}€`);
+  AudioEngine.onTransactionSuccess(price, rpg.rep);
+  gainXP(xpGain);
+  
+  setTimeout(() => npcs.splice(npcs.indexOf(npc), 1), 1500);
+  
   if (rpg.stock === 0) {
-    setTimeout(() => { rpg.stock = 10; updateHUD(); showMsg('📦 Réappro arrivée ! Stock = 10'); }, 8000);
+    setTimeout(() => { rpg.stock = 10; updateHUD(); showMsg('📦 Réappro effectuée !'); }, 6000);
   }
 }
- 
-// Effets de clic (petit anneau)
+
 const clickFx = [];
-function spawnClickFx(x, y) { clickFx.push({ x, y, r: 4, life: 20 }); }
- 
+function spawnClickFx(wx, wy) { clickFx.push({ x: wx, y: wy, r: 2, life: 20 }); }
+
 // ──────────────────────────────────────────────────────────────
-//  10. RENDU ISOMÉTRIQUE
+//  RENDU GRAPHIQUE
 // ──────────────────────────────────────────────────────────────
- 
-// Palette de couleurs par type de tuile
-const TILE_COLORS = {
-  0: { top:'#3a3a4a', left:'#25252f', right:'#2e2e3a' }, // béton
-  1: { top:'#2a2a3a', left:'#18181f', right:'#222230' }, // route
-  2: { top:'#2a4a2a', left:'#1a301a', right:'#223a22' }, // parc
-  3: { top:'#333345', left:'#222233', right:'#2a2a3c' }, // trottoir
+const PALETTE = {
+  0: { t:'#1C1C24', l:'#13131A', r:'#171720' }, // Béton
+  1: { t:'#15151D', l:'#0D0D12', r:'#111116' }, // Route
+  2: { t:'#1C2A1C', l:'#121D12', r:'#162316' }, // Parc
+  3: { t:'#20202A', l:'#15151E', r:'#1A1A24' }, // Trottoir
 };
- 
-function drawTile(col, row, type) {
-  const s  = toScreen(col, row);
-  const hw = TILE_W / 2, hh = TILE_H / 2;
-  const c  = TILE_COLORS[type] || TILE_COLORS[0];
- 
-  // Face supérieure (losange)
+
+function drawTile(c, r, type) {
+  const x = isoX(c, r), y = isoY(c, r);
+  const hw = TILE_W/2, hh = TILE_H/2;
+  const col = PALETTE[type] || PALETTE[0];
+
   ctx.beginPath();
-  ctx.moveTo(s.x,      s.y - hh);
-  ctx.lineTo(s.x + hw, s.y);
-  ctx.lineTo(s.x,      s.y + hh);
-  ctx.lineTo(s.x - hw, s.y);
+  ctx.moveTo(x, y - hh); ctx.lineTo(x + hw, y);
+  ctx.lineTo(x, y + hh); ctx.lineTo(x - hw, y);
   ctx.closePath();
-  ctx.fillStyle = c.top;
-  ctx.fill();
- 
-  // Lignes de grille subtiles
-  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-  ctx.lineWidth = 0.5;
-  ctx.stroke();
- 
-  // Détails parc : petites taches vertes
-  if (type === 2 && Math.sin(col * 7 + row * 13) > 0.6) {
-    ctx.fillStyle = '#3a6a3a';
-    ctx.fillRect(s.x - 4, s.y - 3, 3, 3);
-    ctx.fillRect(s.x + 6, s.y, 2, 2);
-  }
-  // Marques route
-  if (type === 1 && col % 4 === 0) {
-    ctx.fillStyle = 'rgba(255,255,200,0.07)';
-    ctx.fillRect(s.x - 1, s.y - 6, 2, 5);
+  ctx.fillStyle = col.t; ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.02)';
+  ctx.lineWidth = 1; ctx.stroke();
+  
+  // Détails sol
+  if (type === 1 && c % 4 === 0) {
+    ctx.fillStyle = 'rgba(255,255,255,0.05)';
+    ctx.beginPath(); ctx.ellipse(x, y, 4, 2, 0, 0, Math.PI*2); ctx.fill();
   }
 }
- 
-// Dessin d'un bâtiment iso (face top + gauche + droite)
-function drawBuilding(b) {
-  const tw = TILE_W, th = TILE_H, hw = tw/2, hh = th/2;
- 
-  // Calcul des 4 coins bas de la base
-  // Coin NW = toScreen(b.col, b.row)
-  // Coin NE = toScreen(b.col+b.w, b.row)
-  // Coin SE = toScreen(b.col+b.w, b.row+b.h)
-  // Coin SW = toScreen(b.col, b.row+b.h)
-  const nw = toScreen(b.col,       b.row);
-  const ne = toScreen(b.col + b.w, b.row);
-  const se = toScreen(b.col + b.w, b.row + b.h);
-  const sw = toScreen(b.col,       b.row + b.h);
-  const H  = b.height;
- 
-  // ── Face gauche (SW-NW haut)
-  ctx.beginPath();
-  ctx.moveTo(sw.x, sw.y);
-  ctx.lineTo(nw.x, nw.y);
-  ctx.lineTo(nw.x, nw.y - H);
-  ctx.lineTo(sw.x, sw.y - H);
-  ctx.closePath();
+
+// Dessin d'un bloc 1x1 parfait
+function drawBuildingBlock(b) {
+  const top = { x: isoX(b.col, b.row), y: isoY(b.col, b.row) };
+  const rgt = { x: isoX(b.col+1, b.row), y: isoY(b.col+1, b.row) };
+  const bot = { x: isoX(b.col+1, b.row+1), y: isoY(b.col+1, b.row+1) };
+  const lft = { x: isoX(b.col, b.row+1), y: isoY(b.col, b.row+1) };
+  const H = b.height;
+
+  // Face Gauche
   ctx.fillStyle = b.left;
-  ctx.fill();
- 
-  // ── Face droite (SE-NE haut)
   ctx.beginPath();
-  ctx.moveTo(se.x, se.y);
-  ctx.lineTo(ne.x, ne.y);
-  ctx.lineTo(ne.x, ne.y - H);
-  ctx.lineTo(se.x, se.y - H);
-  ctx.closePath();
+  ctx.moveTo(lft.x, lft.y); ctx.lineTo(bot.x, bot.y);
+  ctx.lineTo(bot.x, bot.y - H); ctx.lineTo(lft.x, lft.y - H);
+  ctx.fill();
+
+  // Face Droite
   ctx.fillStyle = b.right;
-  ctx.fill();
- 
-  // ── Face gauche (NW-SW haut) — côté visible
   ctx.beginPath();
-  ctx.moveTo(nw.x, nw.y);
-  ctx.lineTo(sw.x, sw.y);
-  ctx.lineTo(sw.x, sw.y - H);
-  ctx.lineTo(nw.x, nw.y - H);
-  ctx.closePath();
-  ctx.fillStyle = b.left;
+  ctx.moveTo(bot.x, bot.y); ctx.lineTo(rgt.x, rgt.y);
+  ctx.lineTo(rgt.x, rgt.y - H); ctx.lineTo(bot.x, bot.y - H);
   ctx.fill();
- 
-  // ── Face droite (NE-SE haut)
-  ctx.beginPath();
-  ctx.moveTo(ne.x, ne.y);
-  ctx.lineTo(se.x, se.y);
-  ctx.lineTo(se.x, se.y - H);
-  ctx.lineTo(ne.x, ne.y - H);
-  ctx.closePath();
-  ctx.fillStyle = b.right;
-  ctx.fill();
- 
-  // ── Toit (losange surélevé)
-  ctx.beginPath();
-  ctx.moveTo(nw.x, nw.y - H);
-  ctx.lineTo(ne.x, ne.y - H);
-  ctx.lineTo(se.x, se.y - H);
-  ctx.lineTo(sw.x, sw.y - H);
-  ctx.closePath();
+
+  // Toit
   ctx.fillStyle = b.top;
-  ctx.fill();
- 
-  // Contour toit
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-  ctx.lineWidth = 0.8;
-  ctx.stroke();
- 
-  // ── Fenêtres pixelisées
-  if (!b.isTour) {
-    drawWindowsOnBuilding(b, nw, sw, ne, se, H);
-  } else {
-    drawTourBretagne(b, nw, sw, ne, se, H);
-  }
-}
- 
-// Fenêtres génériques
-function drawWindowsOnBuilding(b, nw, sw, ne, se, H) {
-  const faceLW = Math.hypot(sw.x-nw.x, sw.y-nw.y);
-  const faceRW = Math.hypot(se.x-ne.x, se.y-ne.y);
-  const cols = Math.max(1, (b.w + b.h) - 1);
-  const rows2 = Math.max(1, Math.floor(H / 22));
- 
-  // Côté gauche (NW→SW)
-  for (let fc = 0; fc < b.h; fc++) {
-    for (let fr = 0; fr < rows2; fr++) {
-      const t = (fc + 0.5) / b.h;
-      const py = (fr + 0.5) / rows2;
-      const wx = nw.x + (sw.x - nw.x) * t + 2;
-      const wy = (nw.y + (sw.y - nw.y) * t) - H * (1 - py) + 4;
-      const lit = Math.sin(fc * 3.7 + fr * 2.1 + b.col) > 0;
-      ctx.fillStyle = lit ? '#ffe87a' : '#1a2030';
-      ctx.fillRect(wx - 3, wy - 3, 6, 5);
-    }
-  }
-  // Côté droit (NE→SE)
-  for (let fc = 0; fc < b.w; fc++) {
-    for (let fr = 0; fr < rows2; fr++) {
-      const t = (fc + 0.5) / b.w;
-      const py = (fr + 0.5) / rows2;
-      const wx = ne.x + (se.x - ne.x) * t - 2;
-      const wy = (ne.y + (se.y - ne.y) * t) - H * (1 - py) + 4;
-      const lit = Math.sin(fc * 4.1 + fr * 3.3 + b.row) > 0;
-      ctx.fillStyle = lit ? '#ffe87a' : '#1a2030';
-      ctx.fillRect(wx - 3, wy - 3, 6, 5);
-    }
-  }
-}
- 
-// Tour Bretagne avec détails
-function drawTourBretagne(b, nw, sw, ne, se, H) {
-  // Fenêtres façade gauche (bandes horizontales)
-  for (let fr = 2; fr < 18; fr++) {
-    const py = fr / 20;
-    const t1 = 0.15, t2 = 0.85;
-    const y1 = nw.y + (sw.y - nw.y) * t1 - H * (1 - py) + 3;
-    const y2 = nw.y + (sw.y - nw.y) * t2 - H * (1 - py) + 3;
-    const x1 = nw.x + (sw.x - nw.x) * t1;
-    const x2 = nw.x + (sw.x - nw.x) * t2;
-    const lit = fr % 3 !== 0;
-    ctx.fillStyle = lit ? 'rgba(200,230,255,0.7)' : '#0a1020';
-    ctx.beginPath();
-    ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-    ctx.lineTo(x2, y2 - 4); ctx.lineTo(x1, y1 - 4);
-    ctx.closePath(); ctx.fill();
-  }
-  // Façade droite
-  for (let fr = 2; fr < 18; fr++) {
-    const py = fr / 20;
-    const t1 = 0.15, t2 = 0.85;
-    const y1 = ne.y + (se.y - ne.y) * t1 - H * (1 - py) + 3;
-    const y2 = ne.y + (se.y - ne.y) * t2 - H * (1 - py) + 3;
-    const x1 = ne.x + (se.x - ne.x) * t1;
-    const x2 = ne.x + (se.x - ne.x) * t2;
-    const lit = fr % 4 !== 0;
-    ctx.fillStyle = lit ? 'rgba(180,210,255,0.5)' : '#0a1020';
-    ctx.beginPath();
-    ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
-    ctx.lineTo(x2, y2 - 4); ctx.lineTo(x1, y1 - 4);
-    ctx.closePath(); ctx.fill();
-  }
-  // Antenne
-  const topSc = toScreen(b.col + b.w/2, b.row + b.h/2);
-  const tx = topSc.x, ty = topSc.y - H;
-  ctx.strokeStyle = '#aaa';
-  ctx.lineWidth = 2;
-  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx, ty - 30); ctx.stroke();
-  ctx.fillStyle = '#f44'; ctx.fillRect(tx-1, ty-33, 3, 5);
-  // Label flottant
-  ctx.fillStyle = 'rgba(200,220,255,0.9)';
-  ctx.font = 'bold 8px monospace';
-  ctx.textAlign = 'center';
-  ctx.fillText('TOUR BRETAGNE', tx, ty - 40);
-  ctx.textAlign = 'left';
-}
- 
-// ──────────────────────────────────────────────────────────────
-//  11. RENDU DU JOUEUR
-// ──────────────────────────────────────────────────────────────
-function drawPlayer(col, row, outfit, isPlayer) {
-  const s = toScreen(col, row);
-  const x = s.x, y = s.y;
-  const o = outfit;
- 
-  // Ombre au sol
-  ctx.save();
-  ctx.globalAlpha = 0.25;
-  ctx.fillStyle = '#000';
   ctx.beginPath();
-  ctx.ellipse(x, y + 2, 10, 5, 0, 0, Math.PI*2);
+  ctx.moveTo(top.x, top.y - H); ctx.lineTo(rgt.x, rgt.y - H);
+  ctx.lineTo(bot.x, bot.y - H); ctx.lineTo(lft.x, lft.y - H);
   ctx.fill();
-  ctx.restore();
- 
-  // Chaussures
-  ctx.fillStyle = o.shoes;
-  ctx.fillRect(x-7, y+4, 6, 4);
-  ctx.fillRect(x+1, y+4, 6, 4);
- 
-  // Jambes / pantalon
-  ctx.fillStyle = o.pants;
-  ctx.fillRect(x-7, y-8, 6, 12);
-  ctx.fillRect(x+1, y-8, 6, 12);
- 
-  // Corps / veste
-  ctx.fillStyle = o.body;
-  ctx.fillRect(x-8, y-22, 16, 16);
- 
-  // Bras
-  ctx.fillStyle = o.body;
-  ctx.fillRect(x-12, y-21, 5, 11);
-  ctx.fillRect(x+7,  y-21, 5, 11);
- 
-  // Tête
-  ctx.fillStyle = o.skin;
-  ctx.fillRect(x-6, y-34, 12, 13);
- 
-  // Yeux
-  ctx.fillStyle = '#333';
-  ctx.fillRect(x-4, y-30, 3, 3);
-  ctx.fillRect(x+1,  y-30, 3, 3);
- 
-  // Indicateur joueur
-  if (isPlayer) {
-    ctx.fillStyle = '#e8c84a';
-    ctx.beginPath();
-    ctx.moveTo(x, y-42);
-    ctx.lineTo(x-5, y-50);
-    ctx.lineTo(x+5, y-50);
-    ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.stroke();
+
+  // Détails fenêtres dynamiques
+  if (b.ry === b.rh - 1 && !b.isTour && Math.random() > 0.3) {
+    ctx.fillStyle = Math.random() > 0.8 ? '#ffe87a' : '#111520';
+    ctx.fillRect(lft.x + 8, lft.y - H/2, 6, 8);
+  }
+  
+  // Antenne Tour Bretagne (uniquement sur le bloc central haut)
+  if (b.isTour && b.rx === 1 && b.ry === 1) {
+    ctx.strokeStyle = '#aaa'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(top.x, top.y - H); ctx.lineTo(top.x, top.y - H - 40); ctx.stroke();
+    ctx.fillStyle = '#f44'; ctx.fillRect(top.x-1, top.y - H - 45, 3, 5);
   }
 }
- 
-// ──────────────────────────────────────────────────────────────
-//  12. RENDU DES NPCs
-// ──────────────────────────────────────────────────────────────
-function drawNPC(npc) {
-  const s = toScreen(npc.col, npc.row);
-  const x = s.x, y = s.y;
- 
+
+function drawEntity(x, y, isPlayer, outfit, blink, sold) {
+  ctx.save();
+  ctx.translate(x, y);
+  
   // Ombre
-  ctx.save(); ctx.globalAlpha = 0.2;
-  ctx.fillStyle = '#000';
-  ctx.beginPath(); ctx.ellipse(x, y+2, 9, 4, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = 'rgba(0,0,0,0.4)';
+  ctx.beginPath(); ctx.ellipse(0, 0, 10, 5, 0, 0, Math.PI*2); ctx.fill();
+
+  if (isPlayer) {
+    ctx.fillStyle = outfit.shoes; ctx.fillRect(-7, -4, 6, 4); ctx.fillRect(1, -4, 6, 4);
+    ctx.fillStyle = outfit.pants; ctx.fillRect(-7, -16, 6, 12); ctx.fillRect(1, -16, 6, 12);
+    ctx.fillStyle = outfit.body; ctx.fillRect(-8, -30, 16, 14);
+    ctx.fillRect(-12, -29, 4, 10); ctx.fillRect(8, -29, 4, 10);
+    ctx.fillStyle = outfit.skin; ctx.fillRect(-6, -42, 12, 12);
+    ctx.fillStyle = '#111'; ctx.fillRect(-4, -38, 3, 3); ctx.fillRect(1, -38, 3, 3);
+  } else {
+    ctx.fillStyle = '#222'; ctx.fillRect(-5, -12, 10, 12);
+    ctx.fillStyle = outfit.skin; ctx.fillRect(-6, -26, 12, 14);
+    ctx.fillStyle = '#ccc'; ctx.fillRect(-5, -36, 10, 10);
+    
+    if (sold) {
+      ctx.fillStyle = '#7ef77e'; ctx.font = '12px Courier'; ctx.fillText('✓', -4, -45);
+    } else if (blink < 20) {
+      ctx.fillStyle = '#e8c84a'; ctx.font = 'bold 16px Courier'; ctx.fillText('!', -4, -45);
+    }
+  }
   ctx.restore();
- 
-  // Corps simple (couleur skin aléatoire)
-  ctx.fillStyle = '#555'; ctx.fillRect(x-5, y-6, 10, 8);   // jambes
-  ctx.fillStyle = '#888'; ctx.fillRect(x-6, y-18, 12, 14); // corps
-  ctx.fillStyle = npc.skin; ctx.fillRect(x-5, y-28, 10, 11); // tête
- 
-  // Point d'exclamation clignotant
-  npc.blink = (npc.blink + 1) % 40;
-  if (npc.blink < 20 && !npc.sold) {
-    ctx.fillStyle = '#ffe87a';
-    ctx.font = 'bold 14px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('!', x, y - 34);
-    ctx.textAlign = 'left';
-  }
- 
-  // Icône vendu
-  if (npc.sold) {
-    ctx.font = '12px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('✓', x, y - 34);
-    ctx.textAlign = 'left';
-  }
 }
- 
-// ──────────────────────────────────────────────────────────────
-//  13. Y-SORT (tri en profondeur)
-//  Les objets plus proches (col+row grand) sont dessinés après
-// ──────────────────────────────────────────────────────────────
-function getSortKey(col, row) { return col + row; }
- 
-// ──────────────────────────────────────────────────────────────
-//  14. BOUCLE PRINCIPALE
-// ──────────────────────────────────────────────────────────────
-let lastTime = 0;
-let frameCount = 0;
- 
-function gameLoop(ts) {
-  const dt = ts - lastTime; lastTime = ts; frameCount++;
- 
-  // ── Update
-  movePlayer(dt);
- 
-  // Message bar fade
-  if (msgTimer > 0) {
-    msgTimer -= dt;
-    if (msgTimer <= 0) { msgEl.style.opacity = '0'; }
-  }
- 
-  // NPC timers
-  for (let i = npcs.length - 1; i >= 0; i--) {
-    npcs[i].waitTimer -= 1;
-    if (npcs[i].waitTimer <= 0 && !npcs[i].sold) {
-      npcs.splice(i, 1);
-    }
-  }
- 
-  // ── Draw
+
+// Boucle de rendu
+function render() {
+  updateCamera();
+
   ctx.fillStyle = '#0a0a12';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
- 
-  // Grille iso (tuiles)
-  for (let row = 0; row < MAP_ROWS; row++) {
-    for (let col = 0; col < MAP_COLS; col++) {
-      const t = RAW_MAP[row][col];
-      if (t === 8 || t === 9) continue; // géré par buildings
-      drawTile(col, row, t);
+  ctx.fillRect(0, 0, cw, ch);
+
+  ctx.save();
+  // Application de la caméra
+  ctx.translate(cw/2 - camera.x, ch/2 - camera.y);
+
+  // 1. Sol
+  for (let r = 0; r < MAP_ROWS; r++) {
+    for (let c = 0; c < MAP_COLS; c++) {
+      const t = RAW_MAP[r][c];
+      if (t !== 8 && t !== 9) drawTile(c, r, t);
     }
   }
- 
-  // Construire liste d'entités à trier (bâtiments + joueur + npcs)
-  const entities = [];
- 
-  BUILDINGS.forEach(b => {
-    entities.push({ sortKey: getSortKey(b.col + b.w, b.row + b.h) - 0.5, type:'building', data:b });
+
+  // 2. Préparation du Y-Sort (Entités + Piliers de Bâtiments)
+  const renderList = [];
+  
+  SUB_BUILDINGS.forEach(b => {
+    // Le point le plus bas du pilier 1x1 est (col+1, row+1)
+    renderList.push({ sortKey: b.col + b.row + 2, type: 'bldg', data: b });
   });
- 
-  entities.push({ sortKey: getSortKey(player.col, player.row), type:'player' });
- 
-  npcs.forEach((n, i) => {
-    entities.push({ sortKey: getSortKey(n.col, n.row), type:'npc', data:n, idx:i });
+  
+  renderList.push({ sortKey: player.col + player.row, type: 'player' });
+  
+  npcs.forEach(n => {
+    n.blink = (n.blink + 1) % 40;
+    renderList.push({ sortKey: n.col + n.row, type: 'npc', data: n });
   });
- 
-  // Tri Y-sort
-  entities.sort((a, b) => a.sortKey - b.sortKey);
- 
-  // Dessin trié
-  entities.forEach(e => {
-    if (e.type === 'building') {
-      drawBuilding(e.data);
-    } else if (e.type === 'player') {
-      drawPlayer(player.col, player.row, player.outfit, true);
-    } else if (e.type === 'npc') {
-      drawNPC(e.data);
+
+  // Tri de profondeur rigoureux
+  renderList.sort((a, b) => a.sortKey - b.sortKey);
+
+  // 3. Dessin
+  renderList.forEach(item => {
+    if (item.type === 'bldg') {
+      drawBuildingBlock(item.data);
+    } else if (item.type === 'player') {
+      drawEntity(isoX(player.col, player.row), isoY(player.col, player.row), true, player.outfit);
+    } else if (item.type === 'npc') {
+      const n = item.data;
+      drawEntity(isoX(n.col, n.row), isoY(n.col, n.row), false, {skin: n.skin}, n.blink, n.sold);
     }
   });
- 
-  // Effets clic
+
+  // 4. FX Clic
   for (let i = clickFx.length - 1; i >= 0; i--) {
     const fx = clickFx[i];
-    ctx.strokeStyle = `rgba(255,230,100,${fx.life/20})`;
-    ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.arc(fx.x, fx.y, fx.r, 0, Math.PI*2); ctx.stroke();
-    fx.r += 2; fx.life--;
+    ctx.strokeStyle = `rgba(232, 200, 74, ${fx.life/20})`;
+    ctx.beginPath(); ctx.ellipse(fx.x, fx.y, fx.r, fx.r/2, 0, 0, Math.PI*2); ctx.stroke();
+    fx.r += 1.5; fx.life--;
     if (fx.life <= 0) clickFx.splice(i, 1);
   }
- 
-  // Watermark subtil
-  if (frameCount < 180) {
-    ctx.fillStyle = `rgba(255,255,255,${Math.max(0,(180-frameCount)/180)*0.4})`;
-    ctx.font = '11px monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('NANTES UNDERGROUND — Place de Bretagne', canvas.width/2, canvas.height - 10);
-    ctx.textAlign = 'left';
-  }
- 
-  requestAnimationFrame(gameLoop);
+
+  ctx.restore();
 }
- 
+
+let lastTime = 0;
+function loop(ts) {
+  const dt = ts - lastTime; lastTime = ts;
+  movePlayer(dt);
+  
+  for (let i = npcs.length - 1; i >= 0; i--) {
+    npcs[i].waitTimer--;
+    if (npcs[i].waitTimer <= 0 && !npcs[i].sold) npcs.splice(i, 1);
+  }
+  
+  render();
+  requestAnimationFrame(loop);
+}
+
 // ──────────────────────────────────────────────────────────────
-//  15. PANNEAU DE PERSONNALISATION
+//  UI & EVENTS INIT
 // ──────────────────────────────────────────────────────────────
-const colInputs = {
-  body:  document.getElementById('col-body'),
-  pants: document.getElementById('col-pants'),
-  shoes: document.getElementById('col-shoes'),
-  skin:  document.getElementById('col-skin'),
-};
-Object.entries(colInputs).forEach(([key, el]) => {
-  el.value = player.outfit[key];
-  el.addEventListener('input', () => { player.outfit[key] = el.value; });
+['body', 'pants', 'shoes', 'skin'].forEach(k => {
+  const el = document.getElementById('col-' + k);
+  el.value = player.outfit[k];
+  el.addEventListener('input', () => player.outfit[k] = el.value);
 });
+
 document.getElementById('close-panel').addEventListener('click', () => {
   document.getElementById('custom-panel').style.display = 'none';
 });
- 
-// ──────────────────────────────────────────────────────────────
-//  16. DÉMARRAGE
-// ──────────────────────────────────────────────────────────────
-showMsg('Bienvenue à la Place de Bretagne. Clic sol = déplacer • Clic client (!) = vendre');
-requestAnimationFrame(gameLoop);
+
+updateHUD();
+showMsg("Système en ligne. Clic pour interagir.", 4000);
+requestAnimationFrame(loop);
 </script>
 </body>
 </html>
- 
