@@ -1,0 +1,844 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Nantes Underground – Place de Bretagne</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #0a0a12;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    font-family: 'Courier New', monospace;
+    overflow: hidden;
+    user-select: none;
+  }
+ 
+  /* ── HUD ── */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    padding: 8px 16px;
+    background: rgba(0,0,0,0.85);
+    border-bottom: 1px solid #2a2a3a;
+    z-index: 100;
+  }
+  #hud .logo {
+    color: #e8c84a;
+    font-size: 13px;
+    font-weight: bold;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+  .hud-stat {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    color: #ccc;
+    font-size: 12px;
+  }
+  .hud-stat .label { color: #666; text-transform: uppercase; letter-spacing: 1px; font-size: 10px; }
+  .hud-stat .value { color: #7ef77e; font-weight: bold; font-size: 14px; }
+  .hud-stat .value.cash { color: #e8c84a; }
+  .hud-stat .value.rep  { color: #f87; }
+ 
+  #message-bar {
+    position: fixed;
+    bottom: 16px; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.82);
+    border: 1px solid #3a3a5a;
+    color: #ddd;
+    font-size: 12px;
+    padding: 6px 18px;
+    border-radius: 3px;
+    pointer-events: none;
+    transition: opacity 0.4s;
+    z-index: 200;
+    letter-spacing: 0.5px;
+  }
+ 
+  /* ── CANVAS ── */
+  #gameCanvas {
+    display: block;
+    cursor: crosshair;
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+    margin-top: 36px;
+  }
+ 
+  /* ── PANEL CUSTOMISATION ── */
+  #custom-panel {
+    display: none;
+    position: fixed;
+    top: 50%; left: 50%; transform: translate(-50%,-50%);
+    background: #111118;
+    border: 1px solid #444;
+    padding: 20px;
+    z-index: 300;
+    color: #ccc;
+    font-size: 12px;
+    min-width: 220px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.9);
+  }
+  #custom-panel h3 {
+    color: #e8c84a;
+    font-size: 13px;
+    letter-spacing: 2px;
+    margin-bottom: 14px;
+    text-transform: uppercase;
+  }
+  .color-row { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .color-row label { width: 80px; color: #888; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; }
+  .color-row input[type=color] {
+    width: 36px; height: 24px;
+    border: 1px solid #444; background: none; cursor: pointer; padding: 1px;
+  }
+  #close-panel {
+    margin-top: 12px;
+    width: 100%;
+    background: #e8c84a; color: #000;
+    border: none; padding: 6px;
+    cursor: pointer; font-family: inherit;
+    font-size: 11px; letter-spacing: 2px; text-transform: uppercase;
+    font-weight: bold;
+  }
+  #close-panel:hover { background: #fff; }
+</style>
+</head>
+<body>
+ 
+<!-- HUD -->
+<div id="hud">
+  <span class="logo">🏙 Nantes Underground</span>
+  <div class="hud-stat">
+    <span class="label">Cash</span>
+    <span class="value cash" id="stat-cash">0 €</span>
+  </div>
+  <div class="hud-stat">
+    <span class="label">Stock</span>
+    <span class="value" id="stat-stock">10 u</span>
+  </div>
+  <div class="hud-stat">
+    <span class="label">Rep</span>
+    <span class="value rep" id="stat-rep">0</span>
+  </div>
+  <div class="hud-stat" style="margin-left:auto;">
+    <span class="label" style="color:#555; font-size:10px;">CLIC SUR JOUEUR → tenue | CLIC SOL → déplacer | CLIC CLIENT → vendre</span>
+  </div>
+</div>
+ 
+<!-- Panneau personnalisation -->
+<div id="custom-panel">
+  <h3>🎨 Tenue</h3>
+  <div class="color-row">
+    <label>Corps</label>
+    <input type="color" id="col-body" value="#2255cc">
+  </div>
+  <div class="color-row">
+    <label>Pantalon</label>
+    <input type="color" id="col-pants" value="#222222">
+  </div>
+  <div class="color-row">
+    <label>Chaussures</label>
+    <input type="color" id="col-shoes" value="#884411">
+  </div>
+  <div class="color-row">
+    <label>Peau</label>
+    <input type="color" id="col-skin" value="#f5c5a0">
+  </div>
+  <button id="close-panel">Fermer</button>
+</div>
+ 
+<canvas id="gameCanvas"></canvas>
+<div id="message-bar">Bienvenue à la Place de Bretagne.</div>
+ 
+<script>
+// ═══════════════════════════════════════════════════════════════
+//  NANTES UNDERGROUND – Place de Bretagne  (single-file RPG)
+//  Rendu isométrique 2D · Canvas API · Vanilla JS
+// ═══════════════════════════════════════════════════════════════
+ 
+const canvas  = document.getElementById('gameCanvas');
+const ctx     = canvas.getContext('2d');
+ 
+// ──────────────────────────────────────────────────────────────
+//  1. CONSTANTES ISOMÉTRIQUES
+// ──────────────────────────────────────────────────────────────
+const TILE_W  = 64;   // largeur d'une tuile iso
+const TILE_H  = 32;   // hauteur d'une tuile iso
+const MAP_COLS = 24;
+const MAP_ROWS = 24;
+ 
+// Origine (centre écran)
+let originX, originY;
+ 
+function resize() {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight - 36;
+  originX = canvas.width  / 2;
+  originY = canvas.height / 2 - TILE_H;
+}
+resize();
+window.addEventListener('resize', resize);
+ 
+// Conversion grille → écran (isométrique)
+function toScreen(col, row) {
+  return {
+    x: originX + (col - row) * (TILE_W / 2),
+    y: originY + (col + row) * (TILE_H / 2)
+  };
+}
+ 
+// Conversion clic écran → grille (approx)
+function toGrid(sx, sy) {
+  const dx = sx - originX;
+  const dy = sy - originY;
+  const col = (dx / (TILE_W / 2) + dy / (TILE_H / 2)) / 2;
+  const row = (dy / (TILE_H / 2) - dx / (TILE_W / 2)) / 2;
+  return { col: Math.round(col), row: Math.round(row) };
+}
+ 
+// ──────────────────────────────────────────────────────────────
+//  2. CARTE (MAP) — tilemap 2D
+//  0 = sol béton, 1 = route, 2 = parc/herbe, 3 = trottoir
+//  9 = bâtiment ordinaire (solide), 8 = Tour Bretagne (solide)
+// ──────────────────────────────────────────────────────────────
+ 
+// prettier-ignore
+const RAW_MAP = [
+//  0  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 21 22 23
+  [ 9, 9, 9, 9, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 9, 9, 9, 9], // 0
+  [ 9, 9, 9, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 9, 9, 9], // 1
+  [ 9, 9, 3, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 3, 9, 9], // 2
+  [ 9, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 9], // 3
+  [ 3, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 3], // 4
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], // 5
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], // 6
+  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1], // 7
+  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1], // 8
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3], // 9
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3], // 10
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 8, 8, 8, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3], // 11
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 8, 8, 8, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3], // 12
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 8, 8, 8, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3], // 13
+  [ 3, 3, 3, 3, 3, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 3, 3, 3, 3, 3], // 14
+  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1], // 15
+  [ 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1], // 16
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], // 17
+  [ 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1], // 18
+  [ 3, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 3], // 19
+  [ 9, 3, 3, 9, 9, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 9, 9, 3, 3, 9], // 20
+  [ 9, 9, 3, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 3, 9, 9], // 21
+  [ 9, 9, 9, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 3, 9, 9, 9], // 22
+  [ 9, 9, 9, 9, 3, 1, 1, 1, 1, 1, 1, 3, 3, 1, 1, 1, 1, 1, 1, 3, 9, 9, 9, 9], // 23
+];
+ 
+// Tuiles solides (obstacles)
+const SOLID = new Set([8, 9]);
+ 
+function isSolid(col, row) {
+  if (col < 0 || row < 0 || col >= MAP_COLS || row >= MAP_ROWS) return true;
+  return SOLID.has(RAW_MAP[row][col]);
+}
+ 
+// ──────────────────────────────────────────────────────────────
+//  3. BÂTIMENTS (données pour le rendu 3D iso)
+// ──────────────────────────────────────────────────────────────
+ 
+// Chaque bâtiment : {col, row, w, h (en tuiles), height (px), colorTop, colorLeft, colorRight, label?}
+const BUILDINGS = [
+  // Immeubles nord-ouest
+  { col:0,  row:0, w:3, h:4, height:60, top:'#4a5a6a', left:'#2d3d4d', right:'#3a4a5a' },
+  { col:3,  row:0, w:2, h:3, height:50, top:'#5a6a5a', left:'#3d4d3d', right:'#4a5a4a' },
+  // Immeubles nord-est
+  { col:19, row:0, w:3, h:4, height:55, top:'#6a5a4a', left:'#4d3d2d', right:'#5a4a3a' },
+  { col:21, row:0, w:3, h:3, height:45, top:'#5a6a5a', left:'#3d4d3d', right:'#4a5a4a' },
+  // Immeubles sud-ouest
+  { col:0,  row:19, w:3, h:4, height:50, top:'#4a6a5a', left:'#2d4d3d', right:'#3a5a4a' },
+  { col:3,  row:20, w:2, h:4, height:42, top:'#6a4a5a', left:'#4d2d3d', right:'#5a3a4a' },
+  // Immeubles sud-est
+  { col:19, row:19, w:3, h:4, height:55, top:'#5a4a6a', left:'#3d2d4d', right:'#4a3a5a' },
+  { col:21, row:20, w:3, h:4, height:48, top:'#4a5a6a', left:'#2d3d4d', right:'#3a4a5a' },
+  // TOUR BRETAGNE — centre — grande
+  { col:10, row:11, w:3, h:3, height:220, top:'#c8d8e8', left:'#6080a0', right:'#8090b0', isTour:true },
+];
+ 
+// ──────────────────────────────────────────────────────────────
+//  4. ÉTAT DU JOUEUR
+// ──────────────────────────────────────────────────────────────
+const player = {
+  col: 8.5, row: 18,    // position grille (float)
+  targetCol: 8.5, targetRow: 18,
+  speed: 0.06,          // tuiles/frame
+  moving: false,
+  outfit: { body:'#2255cc', pants:'#222222', shoes:'#884411', skin:'#f5c5a0' },
+};
+ 
+// ──────────────────────────────────────────────────────────────
+//  5. ÉTAT RPG
+// ──────────────────────────────────────────────────────────────
+const rpg = { cash: 0, stock: 10, rep: 0 };
+ 
+function updateHUD() {
+  document.getElementById('stat-cash').textContent  = rpg.cash  + ' €';
+  document.getElementById('stat-stock').textContent = rpg.stock + ' u';
+  document.getElementById('stat-rep').textContent   = rpg.rep;
+}
+updateHUD();
+ 
+// ──────────────────────────────────────────────────────────────
+//  6. PNJ / CLIENTS
+// ──────────────────────────────────────────────────────────────
+const WALKABLE_SPOTS = [];
+for (let r = 0; r < MAP_ROWS; r++)
+  for (let c = 0; c < MAP_COLS; c++)
+    if (!isSolid(c, r)) WALKABLE_SPOTS.push({col:c, row:r});
+ 
+function randSpot() {
+  return WALKABLE_SPOTS[Math.floor(Math.random() * WALKABLE_SPOTS.length)];
+}
+ 
+const npcs = [];
+ 
+function spawnNPC() {
+  if (npcs.length >= 4) return;
+  const spot = randSpot();
+  npcs.push({
+    col: spot.col, row: spot.row,
+    kind: 'client',
+    blink: 0,
+    sold: false,
+    waitTimer: 400 + Math.random() * 400, // frames avant de partir
+    skin: `hsl(${Math.random()*360|0},40%,60%)`,
+  });
+}
+ 
+// Premier client immédiat
+spawnNPC();
+setInterval(spawnNPC, 4000);
+ 
+// ──────────────────────────────────────────────────────────────
+//  7. MESSAGE BAR
+// ──────────────────────────────────────────────────────────────
+let msgTimer = 0;
+const msgEl = document.getElementById('message-bar');
+ 
+function showMsg(txt, ms = 3000) {
+  msgEl.textContent = txt;
+  msgEl.style.opacity = '1';
+  msgTimer = ms;
+}
+ 
+// ──────────────────────────────────────────────────────────────
+//  8. PATHFINDING (mouvement linéaire avec évitement simple)
+// ──────────────────────────────────────────────────────────────
+function movePlayer(dt) {
+  if (!player.moving) return;
+  const dc = player.targetCol - player.col;
+  const dr = player.targetRow - player.row;
+  const dist = Math.sqrt(dc*dc + dr*dr);
+  if (dist < 0.08) {
+    player.col = player.targetCol;
+    player.row = player.targetRow;
+    player.moving = false;
+    return;
+  }
+  const step = player.speed;
+  const nx = player.col + (dc / dist) * step;
+  const ny = player.row + (dr / dist) * step;
+  // Évitement simple : ne pas entrer dans un solide
+  if (!isSolid(Math.round(nx), Math.round(ny))) {
+    player.col = nx; player.row = ny;
+  } else if (!isSolid(Math.round(nx), Math.round(player.row))) {
+    player.col = nx;
+  } else if (!isSolid(Math.round(player.col), Math.round(ny))) {
+    player.row = ny;
+  } else {
+    player.moving = false; // bloqué
+  }
+}
+ 
+// ──────────────────────────────────────────────────────────────
+//  9. CLIC SUR LE CANVAS
+// ──────────────────────────────────────────────────────────────
+canvas.addEventListener('click', e => {
+  const rect = canvas.getBoundingClientRect();
+  const sx = e.clientX - rect.left;
+  const sy = e.clientY - rect.top;
+ 
+  // ── a) Clic sur joueur ?
+  const pSc = toScreen(player.col, player.row);
+  const dx = sx - pSc.x, dy = sy - (pSc.y - 20);
+  if (Math.abs(dx) < 18 && Math.abs(dy) < 28) {
+    document.getElementById('custom-panel').style.display = 'block';
+    return;
+  }
+ 
+  // ── b) Clic sur un NPC ?
+  for (let i = 0; i < npcs.length; i++) {
+    const n = npcs[i];
+    const ns = toScreen(n.col, n.row);
+    const nx2 = sx - ns.x, ny2 = sy - (ns.y - 16);
+    if (Math.abs(nx2) < 16 && Math.abs(ny2) < 24) {
+      sellToNPC(n, i);
+      return;
+    }
+  }
+ 
+  // ── c) Déplacement vers le sol
+  const g = toGrid(sx, sy);
+  if (!isSolid(g.col, g.row)) {
+    player.targetCol = g.col;
+    player.targetRow = g.row;
+    player.moving = true;
+    spawnClickFx(sx, sy);
+  }
+});
+ 
+// Vente à un NPC
+function sellToNPC(npc, idx) {
+  if (rpg.stock <= 0) { showMsg('Stock épuisé ! Reviens plus tard.'); return; }
+  if (npc.sold) { showMsg('Ce client a déjà été servi.'); return; }
+  const price = 20 + Math.floor(Math.random() * 30);
+  rpg.cash  += price;
+  rpg.stock -= 1;
+  rpg.rep   += 1;
+  npc.sold = true;
+  updateHUD();
+  showMsg(`+${price} € 💰  Stock restant : ${rpg.stock}`);
+  // Le NPC repart après vente
+  setTimeout(() => { npcs.splice(idx, 1); }, 1500);
+ 
+  // Restockage automatique
+  if (rpg.stock === 0) {
+    setTimeout(() => { rpg.stock = 10; updateHUD(); showMsg('📦 Réappro arrivée ! Stock = 10'); }, 8000);
+  }
+}
+ 
+// Effets de clic (petit anneau)
+const clickFx = [];
+function spawnClickFx(x, y) { clickFx.push({ x, y, r: 4, life: 20 }); }
+ 
+// ──────────────────────────────────────────────────────────────
+//  10. RENDU ISOMÉTRIQUE
+// ──────────────────────────────────────────────────────────────
+ 
+// Palette de couleurs par type de tuile
+const TILE_COLORS = {
+  0: { top:'#3a3a4a', left:'#25252f', right:'#2e2e3a' }, // béton
+  1: { top:'#2a2a3a', left:'#18181f', right:'#222230' }, // route
+  2: { top:'#2a4a2a', left:'#1a301a', right:'#223a22' }, // parc
+  3: { top:'#333345', left:'#222233', right:'#2a2a3c' }, // trottoir
+};
+ 
+function drawTile(col, row, type) {
+  const s  = toScreen(col, row);
+  const hw = TILE_W / 2, hh = TILE_H / 2;
+  const c  = TILE_COLORS[type] || TILE_COLORS[0];
+ 
+  // Face supérieure (losange)
+  ctx.beginPath();
+  ctx.moveTo(s.x,      s.y - hh);
+  ctx.lineTo(s.x + hw, s.y);
+  ctx.lineTo(s.x,      s.y + hh);
+  ctx.lineTo(s.x - hw, s.y);
+  ctx.closePath();
+  ctx.fillStyle = c.top;
+  ctx.fill();
+ 
+  // Lignes de grille subtiles
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 0.5;
+  ctx.stroke();
+ 
+  // Détails parc : petites taches vertes
+  if (type === 2 && Math.sin(col * 7 + row * 13) > 0.6) {
+    ctx.fillStyle = '#3a6a3a';
+    ctx.fillRect(s.x - 4, s.y - 3, 3, 3);
+    ctx.fillRect(s.x + 6, s.y, 2, 2);
+  }
+  // Marques route
+  if (type === 1 && col % 4 === 0) {
+    ctx.fillStyle = 'rgba(255,255,200,0.07)';
+    ctx.fillRect(s.x - 1, s.y - 6, 2, 5);
+  }
+}
+ 
+// Dessin d'un bâtiment iso (face top + gauche + droite)
+function drawBuilding(b) {
+  const tw = TILE_W, th = TILE_H, hw = tw/2, hh = th/2;
+ 
+  // Calcul des 4 coins bas de la base
+  // Coin NW = toScreen(b.col, b.row)
+  // Coin NE = toScreen(b.col+b.w, b.row)
+  // Coin SE = toScreen(b.col+b.w, b.row+b.h)
+  // Coin SW = toScreen(b.col, b.row+b.h)
+  const nw = toScreen(b.col,       b.row);
+  const ne = toScreen(b.col + b.w, b.row);
+  const se = toScreen(b.col + b.w, b.row + b.h);
+  const sw = toScreen(b.col,       b.row + b.h);
+  const H  = b.height;
+ 
+  // ── Face gauche (SW-NW haut)
+  ctx.beginPath();
+  ctx.moveTo(sw.x, sw.y);
+  ctx.lineTo(nw.x, nw.y);
+  ctx.lineTo(nw.x, nw.y - H);
+  ctx.lineTo(sw.x, sw.y - H);
+  ctx.closePath();
+  ctx.fillStyle = b.left;
+  ctx.fill();
+ 
+  // ── Face droite (SE-NE haut)
+  ctx.beginPath();
+  ctx.moveTo(se.x, se.y);
+  ctx.lineTo(ne.x, ne.y);
+  ctx.lineTo(ne.x, ne.y - H);
+  ctx.lineTo(se.x, se.y - H);
+  ctx.closePath();
+  ctx.fillStyle = b.right;
+  ctx.fill();
+ 
+  // ── Face gauche (NW-SW haut) — côté visible
+  ctx.beginPath();
+  ctx.moveTo(nw.x, nw.y);
+  ctx.lineTo(sw.x, sw.y);
+  ctx.lineTo(sw.x, sw.y - H);
+  ctx.lineTo(nw.x, nw.y - H);
+  ctx.closePath();
+  ctx.fillStyle = b.left;
+  ctx.fill();
+ 
+  // ── Face droite (NE-SE haut)
+  ctx.beginPath();
+  ctx.moveTo(ne.x, ne.y);
+  ctx.lineTo(se.x, se.y);
+  ctx.lineTo(se.x, se.y - H);
+  ctx.lineTo(ne.x, ne.y - H);
+  ctx.closePath();
+  ctx.fillStyle = b.right;
+  ctx.fill();
+ 
+  // ── Toit (losange surélevé)
+  ctx.beginPath();
+  ctx.moveTo(nw.x, nw.y - H);
+  ctx.lineTo(ne.x, ne.y - H);
+  ctx.lineTo(se.x, se.y - H);
+  ctx.lineTo(sw.x, sw.y - H);
+  ctx.closePath();
+  ctx.fillStyle = b.top;
+  ctx.fill();
+ 
+  // Contour toit
+  ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+  ctx.lineWidth = 0.8;
+  ctx.stroke();
+ 
+  // ── Fenêtres pixelisées
+  if (!b.isTour) {
+    drawWindowsOnBuilding(b, nw, sw, ne, se, H);
+  } else {
+    drawTourBretagne(b, nw, sw, ne, se, H);
+  }
+}
+ 
+// Fenêtres génériques
+function drawWindowsOnBuilding(b, nw, sw, ne, se, H) {
+  const faceLW = Math.hypot(sw.x-nw.x, sw.y-nw.y);
+  const faceRW = Math.hypot(se.x-ne.x, se.y-ne.y);
+  const cols = Math.max(1, (b.w + b.h) - 1);
+  const rows2 = Math.max(1, Math.floor(H / 22));
+ 
+  // Côté gauche (NW→SW)
+  for (let fc = 0; fc < b.h; fc++) {
+    for (let fr = 0; fr < rows2; fr++) {
+      const t = (fc + 0.5) / b.h;
+      const py = (fr + 0.5) / rows2;
+      const wx = nw.x + (sw.x - nw.x) * t + 2;
+      const wy = (nw.y + (sw.y - nw.y) * t) - H * (1 - py) + 4;
+      const lit = Math.sin(fc * 3.7 + fr * 2.1 + b.col) > 0;
+      ctx.fillStyle = lit ? '#ffe87a' : '#1a2030';
+      ctx.fillRect(wx - 3, wy - 3, 6, 5);
+    }
+  }
+  // Côté droit (NE→SE)
+  for (let fc = 0; fc < b.w; fc++) {
+    for (let fr = 0; fr < rows2; fr++) {
+      const t = (fc + 0.5) / b.w;
+      const py = (fr + 0.5) / rows2;
+      const wx = ne.x + (se.x - ne.x) * t - 2;
+      const wy = (ne.y + (se.y - ne.y) * t) - H * (1 - py) + 4;
+      const lit = Math.sin(fc * 4.1 + fr * 3.3 + b.row) > 0;
+      ctx.fillStyle = lit ? '#ffe87a' : '#1a2030';
+      ctx.fillRect(wx - 3, wy - 3, 6, 5);
+    }
+  }
+}
+ 
+// Tour Bretagne avec détails
+function drawTourBretagne(b, nw, sw, ne, se, H) {
+  // Fenêtres façade gauche (bandes horizontales)
+  for (let fr = 2; fr < 18; fr++) {
+    const py = fr / 20;
+    const t1 = 0.15, t2 = 0.85;
+    const y1 = nw.y + (sw.y - nw.y) * t1 - H * (1 - py) + 3;
+    const y2 = nw.y + (sw.y - nw.y) * t2 - H * (1 - py) + 3;
+    const x1 = nw.x + (sw.x - nw.x) * t1;
+    const x2 = nw.x + (sw.x - nw.x) * t2;
+    const lit = fr % 3 !== 0;
+    ctx.fillStyle = lit ? 'rgba(200,230,255,0.7)' : '#0a1020';
+    ctx.beginPath();
+    ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    ctx.lineTo(x2, y2 - 4); ctx.lineTo(x1, y1 - 4);
+    ctx.closePath(); ctx.fill();
+  }
+  // Façade droite
+  for (let fr = 2; fr < 18; fr++) {
+    const py = fr / 20;
+    const t1 = 0.15, t2 = 0.85;
+    const y1 = ne.y + (se.y - ne.y) * t1 - H * (1 - py) + 3;
+    const y2 = ne.y + (se.y - ne.y) * t2 - H * (1 - py) + 3;
+    const x1 = ne.x + (se.x - ne.x) * t1;
+    const x2 = ne.x + (se.x - ne.x) * t2;
+    const lit = fr % 4 !== 0;
+    ctx.fillStyle = lit ? 'rgba(180,210,255,0.5)' : '#0a1020';
+    ctx.beginPath();
+    ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+    ctx.lineTo(x2, y2 - 4); ctx.lineTo(x1, y1 - 4);
+    ctx.closePath(); ctx.fill();
+  }
+  // Antenne
+  const topSc = toScreen(b.col + b.w/2, b.row + b.h/2);
+  const tx = topSc.x, ty = topSc.y - H;
+  ctx.strokeStyle = '#aaa';
+  ctx.lineWidth = 2;
+  ctx.beginPath(); ctx.moveTo(tx, ty); ctx.lineTo(tx, ty - 30); ctx.stroke();
+  ctx.fillStyle = '#f44'; ctx.fillRect(tx-1, ty-33, 3, 5);
+  // Label flottant
+  ctx.fillStyle = 'rgba(200,220,255,0.9)';
+  ctx.font = 'bold 8px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText('TOUR BRETAGNE', tx, ty - 40);
+  ctx.textAlign = 'left';
+}
+ 
+// ──────────────────────────────────────────────────────────────
+//  11. RENDU DU JOUEUR
+// ──────────────────────────────────────────────────────────────
+function drawPlayer(col, row, outfit, isPlayer) {
+  const s = toScreen(col, row);
+  const x = s.x, y = s.y;
+  const o = outfit;
+ 
+  // Ombre au sol
+  ctx.save();
+  ctx.globalAlpha = 0.25;
+  ctx.fillStyle = '#000';
+  ctx.beginPath();
+  ctx.ellipse(x, y + 2, 10, 5, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.restore();
+ 
+  // Chaussures
+  ctx.fillStyle = o.shoes;
+  ctx.fillRect(x-7, y+4, 6, 4);
+  ctx.fillRect(x+1, y+4, 6, 4);
+ 
+  // Jambes / pantalon
+  ctx.fillStyle = o.pants;
+  ctx.fillRect(x-7, y-8, 6, 12);
+  ctx.fillRect(x+1, y-8, 6, 12);
+ 
+  // Corps / veste
+  ctx.fillStyle = o.body;
+  ctx.fillRect(x-8, y-22, 16, 16);
+ 
+  // Bras
+  ctx.fillStyle = o.body;
+  ctx.fillRect(x-12, y-21, 5, 11);
+  ctx.fillRect(x+7,  y-21, 5, 11);
+ 
+  // Tête
+  ctx.fillStyle = o.skin;
+  ctx.fillRect(x-6, y-34, 12, 13);
+ 
+  // Yeux
+  ctx.fillStyle = '#333';
+  ctx.fillRect(x-4, y-30, 3, 3);
+  ctx.fillRect(x+1,  y-30, 3, 3);
+ 
+  // Indicateur joueur
+  if (isPlayer) {
+    ctx.fillStyle = '#e8c84a';
+    ctx.beginPath();
+    ctx.moveTo(x, y-42);
+    ctx.lineTo(x-5, y-50);
+    ctx.lineTo(x+5, y-50);
+    ctx.closePath(); ctx.fill();
+  }
+}
+ 
+// ──────────────────────────────────────────────────────────────
+//  12. RENDU DES NPCs
+// ──────────────────────────────────────────────────────────────
+function drawNPC(npc) {
+  const s = toScreen(npc.col, npc.row);
+  const x = s.x, y = s.y;
+ 
+  // Ombre
+  ctx.save(); ctx.globalAlpha = 0.2;
+  ctx.fillStyle = '#000';
+  ctx.beginPath(); ctx.ellipse(x, y+2, 9, 4, 0, 0, Math.PI*2); ctx.fill();
+  ctx.restore();
+ 
+  // Corps simple (couleur skin aléatoire)
+  ctx.fillStyle = '#555'; ctx.fillRect(x-5, y-6, 10, 8);   // jambes
+  ctx.fillStyle = '#888'; ctx.fillRect(x-6, y-18, 12, 14); // corps
+  ctx.fillStyle = npc.skin; ctx.fillRect(x-5, y-28, 10, 11); // tête
+ 
+  // Point d'exclamation clignotant
+  npc.blink = (npc.blink + 1) % 40;
+  if (npc.blink < 20 && !npc.sold) {
+    ctx.fillStyle = '#ffe87a';
+    ctx.font = 'bold 14px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('!', x, y - 34);
+    ctx.textAlign = 'left';
+  }
+ 
+  // Icône vendu
+  if (npc.sold) {
+    ctx.font = '12px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('✓', x, y - 34);
+    ctx.textAlign = 'left';
+  }
+}
+ 
+// ──────────────────────────────────────────────────────────────
+//  13. Y-SORT (tri en profondeur)
+//  Les objets plus proches (col+row grand) sont dessinés après
+// ──────────────────────────────────────────────────────────────
+function getSortKey(col, row) { return col + row; }
+ 
+// ──────────────────────────────────────────────────────────────
+//  14. BOUCLE PRINCIPALE
+// ──────────────────────────────────────────────────────────────
+let lastTime = 0;
+let frameCount = 0;
+ 
+function gameLoop(ts) {
+  const dt = ts - lastTime; lastTime = ts; frameCount++;
+ 
+  // ── Update
+  movePlayer(dt);
+ 
+  // Message bar fade
+  if (msgTimer > 0) {
+    msgTimer -= dt;
+    if (msgTimer <= 0) { msgEl.style.opacity = '0'; }
+  }
+ 
+  // NPC timers
+  for (let i = npcs.length - 1; i >= 0; i--) {
+    npcs[i].waitTimer -= 1;
+    if (npcs[i].waitTimer <= 0 && !npcs[i].sold) {
+      npcs.splice(i, 1);
+    }
+  }
+ 
+  // ── Draw
+  ctx.fillStyle = '#0a0a12';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+ 
+  // Grille iso (tuiles)
+  for (let row = 0; row < MAP_ROWS; row++) {
+    for (let col = 0; col < MAP_COLS; col++) {
+      const t = RAW_MAP[row][col];
+      if (t === 8 || t === 9) continue; // géré par buildings
+      drawTile(col, row, t);
+    }
+  }
+ 
+  // Construire liste d'entités à trier (bâtiments + joueur + npcs)
+  const entities = [];
+ 
+  BUILDINGS.forEach(b => {
+    entities.push({ sortKey: getSortKey(b.col + b.w, b.row + b.h) - 0.5, type:'building', data:b });
+  });
+ 
+  entities.push({ sortKey: getSortKey(player.col, player.row), type:'player' });
+ 
+  npcs.forEach((n, i) => {
+    entities.push({ sortKey: getSortKey(n.col, n.row), type:'npc', data:n, idx:i });
+  });
+ 
+  // Tri Y-sort
+  entities.sort((a, b) => a.sortKey - b.sortKey);
+ 
+  // Dessin trié
+  entities.forEach(e => {
+    if (e.type === 'building') {
+      drawBuilding(e.data);
+    } else if (e.type === 'player') {
+      drawPlayer(player.col, player.row, player.outfit, true);
+    } else if (e.type === 'npc') {
+      drawNPC(e.data);
+    }
+  });
+ 
+  // Effets clic
+  for (let i = clickFx.length - 1; i >= 0; i--) {
+    const fx = clickFx[i];
+    ctx.strokeStyle = `rgba(255,230,100,${fx.life/20})`;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.arc(fx.x, fx.y, fx.r, 0, Math.PI*2); ctx.stroke();
+    fx.r += 2; fx.life--;
+    if (fx.life <= 0) clickFx.splice(i, 1);
+  }
+ 
+  // Watermark subtil
+  if (frameCount < 180) {
+    ctx.fillStyle = `rgba(255,255,255,${Math.max(0,(180-frameCount)/180)*0.4})`;
+    ctx.font = '11px monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText('NANTES UNDERGROUND — Place de Bretagne', canvas.width/2, canvas.height - 10);
+    ctx.textAlign = 'left';
+  }
+ 
+  requestAnimationFrame(gameLoop);
+}
+ 
+// ──────────────────────────────────────────────────────────────
+//  15. PANNEAU DE PERSONNALISATION
+// ──────────────────────────────────────────────────────────────
+const colInputs = {
+  body:  document.getElementById('col-body'),
+  pants: document.getElementById('col-pants'),
+  shoes: document.getElementById('col-shoes'),
+  skin:  document.getElementById('col-skin'),
+};
+Object.entries(colInputs).forEach(([key, el]) => {
+  el.value = player.outfit[key];
+  el.addEventListener('input', () => { player.outfit[key] = el.value; });
+});
+document.getElementById('close-panel').addEventListener('click', () => {
+  document.getElementById('custom-panel').style.display = 'none';
+});
+ 
+// ──────────────────────────────────────────────────────────────
+//  16. DÉMARRAGE
+// ──────────────────────────────────────────────────────────────
+showMsg('Bienvenue à la Place de Bretagne. Clic sol = déplacer • Clic client (!) = vendre');
+requestAnimationFrame(gameLoop);
+</script>
+</body>
+</html>
+ 
