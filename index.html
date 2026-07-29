@@ -1577,25 +1577,38 @@
 
         setInterval(spawnCar, 3500);
 
+        /* 3D Volumetric Isometric Car Sprite Renderer */
         function drawCarSprite(x, y, car) {
-            const carHeight = 14;
-            const drawY = y - carHeight; // Height offset to anchor wheels to ground
+            const carHeight = 16;
+            const drawY = y - carHeight; // Height offset anchoring wheels to asphalt
 
-            // 1. Ground Shadow under wheels
+            ctx.save();
+
+            // 1. Oval Translucent Ground Shadow under wheels
             ctx.beginPath();
-            ctx.ellipse(x, y + 2, 16, 8, 0, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+            ctx.ellipse(x, y + 2, 18, 9, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
             ctx.fill();
 
-            // 2. 4 Rubber Wheels
-            ctx.fillStyle = '#0a0a0d';
-            ctx.fillRect(x - 14, y - 3, 5, 5);
-            ctx.fillRect(x + 9, y - 3, 5, 5);
-            ctx.fillRect(x - 9, y + 1, 5, 5);
-            ctx.fillRect(x + 4, y + 1, 5, 5);
+            // 2. 4 Rubber Wheels at Isometric Base Corners
+            ctx.fillStyle = '#090a0f';
+            ctx.fillRect(x - 14, y - 2, 5, 5);
+            ctx.fillRect(x + 9, y - 2, 5, 5);
+            ctx.fillRect(x - 9, y + 2, 5, 5);
+            ctx.fillRect(x + 4, y + 2, 5, 5);
 
-            // 3. Volumetric Isometric Car Chassis (Lower Box)
-            // Left Face (Darkened)
+            // 3. Headlights Light Cone on Ground Asphalt
+            const isFacingRight = car.dirCol >= 0;
+            ctx.fillStyle = 'rgba(255, 255, 170, 0.25)';
+            ctx.beginPath();
+            ctx.moveTo(x + (isFacingRight ? 12 : -12), y);
+            ctx.lineTo(x + (isFacingRight ? 45 : -45), y - 15);
+            ctx.lineTo(x + (isFacingRight ? 45 : -45), y + 15);
+            ctx.closePath();
+            ctx.fill();
+
+            // 4. Volumetric 3-Face Chassis Block
+            // Left Face (Base color darkened by 25%)
             ctx.beginPath();
             ctx.moveTo(x - 16, drawY + 6);
             ctx.lineTo(x, drawY + 12);
@@ -1605,7 +1618,7 @@
             ctx.fillStyle = adjustBrightness(car.color, -25);
             ctx.fill();
 
-            // Right Face
+            // Right Face (Standard base color)
             ctx.beginPath();
             ctx.moveTo(x + 16, drawY + 6);
             ctx.lineTo(x, drawY + 12);
@@ -1615,23 +1628,25 @@
             ctx.fillStyle = car.color;
             ctx.fill();
 
-            // Top Body Roof Diamond
-            drawTileDiamond(x, drawY - 2, 32, 16, adjustBrightness(car.color, 25), '#ffffff');
+            // Top Face / Hood / Roof (Base color brightened by 25%)
+            drawTileDiamond(x, drawY - 2, 32, 16, adjustBrightness(car.color, 25), 'rgba(255,255,255,0.4)');
 
-            // 4. Roof Passenger Cabin Block (Upper Box)
-            ctx.fillStyle = adjustBrightness(car.color, 40);
+            // 5. Roof Cabin Block (Upper Box)
+            ctx.fillStyle = adjustBrightness(car.color, 35);
             ctx.fillRect(x - 7, drawY - 10, 14, 7);
 
-            // Windshield Glass Highlight
-            ctx.fillStyle = 'rgba(0, 216, 255, 0.75)';
+            // Translucent Blue Windshield & Rear Window Highlight
+            ctx.fillStyle = 'rgba(0, 216, 255, 0.65)';
             ctx.fillRect(x - 5, drawY - 9, 10, 4);
 
-            // Headlights Glow
-            ctx.fillStyle = '#ffffaa';
-            ctx.shadowColor = '#ffffaa';
-            ctx.shadowBlur = 10;
-            ctx.fillRect(x + (car.dirCol >= 0 ? 12 : -14), drawY + 3, 4, 3);
+            // Red Taillights
+            ctx.fillStyle = '#ff0055';
+            ctx.shadowColor = '#ff0055';
+            ctx.shadowBlur = 6;
+            ctx.fillRect(x + (isFacingRight ? -14 : 12), drawY + 3, 3, 3);
             ctx.shadowBlur = 0;
+
+            ctx.restore();
         }
 
         /* 3D Articulated 5-Module TAN Nantes Tramcar Sprite Renderer */
@@ -1640,50 +1655,50 @@
 
             const dir = tram.direction; // 1 = Southbound, -1 = Northbound
             const numModules = 5;
-            const moduleLength = 16;
+            const moduleLength = 18;
 
-            // 1. Front Light Beam on Track
-            ctx.fillStyle = 'rgba(0, 216, 255, 0.18)';
+            // 1. Front Light Cone on Ground Track
+            ctx.fillStyle = 'rgba(0, 216, 255, 0.22)';
             ctx.beginPath();
             ctx.moveTo(x, y);
-            const beamY = dir > 0 ? y + 55 : y - 55;
-            ctx.lineTo(x - 26, beamY);
-            ctx.lineTo(x + 26, beamY);
+            const beamY = dir > 0 ? y + 60 : y - 60;
+            ctx.lineTo(x - 28, beamY);
+            ctx.lineTo(x + 28, beamY);
             ctx.closePath();
             ctx.fill();
 
-            // 2. Long Ground Shadow
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+            // 2. Long Ground Shadow under all 5 modules
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
             ctx.beginPath();
-            ctx.ellipse(x, y + 2, 38, 12, 0, 0, Math.PI * 2);
+            ctx.ellipse(x, y + 2, 42, 14, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // Draw 5 Articulated Modules
+            // 3. Draw 5 Articulated Modules
             for (let i = 0; i < numModules; i++) {
                 const offset = (i - 2) * moduleLength * (dir > 0 ? 1 : -1);
                 const modX = x;
-                const modY = y + offset - 18; // Height offset
+                const modY = y + offset - 20; // Height offset
 
                 const isFront = (dir > 0 ? i === 4 : i === 0);
                 const isRear = (dir > 0 ? i === 0 : i === 4);
                 const isMiddle = (i === 2);
 
-                // Lower Body (TAN Emerald Green Stripe)
-                ctx.fillStyle = '#059669';
+                // Lower Body Stripe (Official TAN Nantes Dark Emerald Green #005a36)
+                ctx.fillStyle = '#005a36';
                 ctx.beginPath();
-                ctx.roundRect(modX - 16, modY + 6, 32, 14, 4);
+                ctx.roundRect(modX - 17, modY + 6, 34, 15, 4);
                 ctx.fill();
 
-                // Upper Roof (Crisp Pure White)
+                // Upper Body & Roof (Crisp Pure White #ffffff)
                 ctx.fillStyle = '#ffffff';
-                ctx.fillRect(modX - 15, modY - 4, 30, 10);
+                ctx.fillRect(modX - 16, modY - 5, 32, 11);
 
-                // Panoramic Windows
-                ctx.fillStyle = 'rgba(0, 216, 255, 0.85)';
-                ctx.fillRect(modX - 11, modY - 2, 7, 7);
-                ctx.fillRect(modX + 4, modY - 2, 7, 7);
+                // Continuous Panoramic Smoked Glass Windows
+                ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+                ctx.fillRect(modX - 12, modY - 2, 8, 7);
+                ctx.fillRect(modX + 4, modY - 2, 8, 7);
 
-                // Station Door Indicator Light when stopped
+                // Green Door Indicator Light when stopped
                 if (tram.isStopped) {
                     ctx.fillStyle = '#00ff88';
                     ctx.shadowColor = '#00ff88';
@@ -1692,52 +1707,52 @@
                     ctx.shadowBlur = 0;
                 }
 
-                // Dark Accordion Rubber Joint between modules
+                // Dark Rubber Pleated Accordion Bellows between modules
                 if (i < numModules - 1) {
                     ctx.fillStyle = '#1e293b';
-                    ctx.fillRect(modX - 15, modY + 12, 30, 3);
+                    ctx.fillRect(modX - 16, modY + 13, 32, 4);
                 }
 
-                // Middle Module Pantograph & Catenary Sparks
+                // Middle Module Profiled Pantograph & Catenary Sparks
                 if (isMiddle) {
                     ctx.strokeStyle = '#94a3b8';
                     ctx.lineWidth = 2;
                     ctx.beginPath();
-                    ctx.moveTo(modX, modY - 4);
-                    ctx.lineTo(modX, modY - 24);
+                    ctx.moveTo(modX, modY - 5);
+                    ctx.lineTo(modX, modY - 26);
                     ctx.stroke();
 
                     if (!tram.isStopped && Math.random() < 0.4) {
-                        spawnParticles(modX, modY - 24, 3, '#00d8ff');
+                        spawnParticles(modX, modY - 26, 3, '#00d8ff');
                     }
                 }
 
-                // Front Streamlined Nose & LED Destination Board
+                // Front Streamlined Nose & LED Destination Board ("L3 NEUSTRIE")
                 if (isFront) {
                     ctx.fillStyle = '#ffffaa';
                     ctx.shadowColor = '#ffffaa';
                     ctx.shadowBlur = 14;
-                    const headY = dir > 0 ? modY + 16 : modY - 2;
-                    ctx.fillRect(modX - 10, headY, 5, 4);
-                    ctx.fillRect(modX + 5, headY, 5, 4);
+                    const headY = dir > 0 ? modY + 17 : modY - 3;
+                    ctx.fillRect(modX - 11, headY, 5, 4);
+                    ctx.fillRect(modX + 6, headY, 5, 4);
                     ctx.shadowBlur = 0;
 
-                    ctx.fillStyle = '#1e1b4b';
-                    ctx.fillRect(modX - 14, modY - 6, 28, 6);
+                    ctx.fillStyle = '#020617';
+                    ctx.fillRect(modX - 14, modY - 7, 28, 6);
                     ctx.fillStyle = '#ffd700';
                     ctx.font = '700 8px var(--font-tech)';
                     ctx.textAlign = 'center';
-                    ctx.fillText(tram.lineName, modX, modY - 1);
+                    ctx.fillText(tram.lineName, modX, modY - 2);
                 }
 
-                // Rear Tail Module Lights
+                // Rear Tail Module Red Lights
                 if (isRear) {
                     ctx.fillStyle = '#ff0055';
                     ctx.shadowColor = '#ff0055';
                     ctx.shadowBlur = 8;
-                    const tailY = dir > 0 ? modY - 2 : modY + 16;
-                    ctx.fillRect(modX - 10, tailY, 4, 3);
-                    ctx.fillRect(modX + 6, tailY, 4, 3);
+                    const tailY = dir > 0 ? modY - 3 : modY + 17;
+                    ctx.fillRect(modX - 11, tailY, 4, 3);
+                    ctx.fillRect(modX + 7, tailY, 4, 3);
                     ctx.shadowBlur = 0;
                 }
             }
