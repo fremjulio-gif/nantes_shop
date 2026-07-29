@@ -2016,82 +2016,220 @@
             }
         }, 12000);
 
+        /* Directional 3D Vision Cone & Police AI State Machine */
         function updatePolice() {
-            let playerSpotted = false;
+            let inAnyPursuit = false;
             updateStealth();
 
-            // Police cannot spot player if hidden in trees/shadows
-            if (!player.isStealth) {
-                cops.forEach(cop => {
-                    if (Math.random() < 0.02) {
-                        const nc = cop.col + Math.floor((Math.random() - 0.5) * 4);
-                        const nr = cop.row + Math.floor((Math.random() - 0.5) * 4);
-                        if (isTileWalkable(nc, nr)) {
-                            cop.col = nc;
-                            cop.row = nr;
-                            cop.subCol = nc;
-                            cop.subRow = nr;
+            cops.forEach(cop => {
+                if (!cop.pauseTimer) cop.pauseTimer = 0;
+                if (cop.facingAngle === undefined) cop.facingAngle = 0;
+
+                // 1. Vector & Angle Math for 70° Directional Vision Cone
+                const dx = player.subCol - cop.subCol;
+                const dy = player.subRow - cop.subRow;
+                const dist = Math.hypot(dx, dy);
+
+                const angleToPlayer = Math.atan2(dy, dx);
+                let angleDiff = Math.abs(angleToPlayer - cop.facingAngle);
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                angleDiff = Math.abs(angleDiff);
+
+                const isInsideVisionCone = (!player.isStealth && dist <= 5.0 && angleDiff <= (35 * Math.PI / 180));
+
+                // 2. State Machine Transitions (PATROL -> SUSPICIOUS -> PURSUIT -> ARREST)
+                if (isInsideVisionCone) {
+                    cop.alertTimer = (cop.alertTimer || 0) + 1;
+                    if (cop.state === 'PATROL') {
+                        cop.state = 'SUSPICIOUS';
+                        AudioEngine.onStep('tram_track');
+                    }
+                    if (cop.alertTimer > 40 && cop.state === 'SUSPICIOUS') {
+                        cop.state = 'PURSUIT';
+                        AudioEngine.onLevelUp();
+                        showNotification("🚨 POLICE EN POURSUITE ! Fuyez immédiatement !");
+                    }
+                } else {
+                    cop.alertTimer = Math.max(0, (cop.alertTimer || 0) - 1);
+                    if (cop.alertTimer === 0 && cop.state !== 'PATROL') {
+                        cop.state = 'PATROL';
+                    }
+                }
+
+                // 3. Movement Behavior based on State
+                if (cop.state === 'PURSUIT') {
+                    inAnyPursuit = true;
+                    cop.speed = 0.095; // 1.8x Running speed!
+                    const angle = Math.atan2(player.subRow - cop.subRow, player.subCol - cop.subCol);
+                    cop.facingAngle = angle;
+                    cop.subCol += Math.cos(angle) * cop.speed;
+                    cop.subRow += Math.sin(angle) * cop.speed;
+                    cop.col = Math.round(cop.subCol);
+                    cop.row = Math.round(cop.subRow);
+
+                    // ARREST TRIGGER on physical contact
+                    if (dist < 0.95) {
+                        triggerPoliceArrest();
+                    }
+                } else if (cop.state === 'SUSPICIOUS') {
+                    cop.facingAngle = Math.atan2(dy, dx); // Turn towards player
+                    suspicion = Math.min(100, suspicion + 0.9);
+                } else { // PATROL
+                    cop.speed = 0.04;
+                    if (cop.pauseTimer > 0) {
+                        cop.pauseTimer--;
+                    } else {
+                        const distTarget = Math.hypot(cop.targetCol - cop.subCol, cop.targetRow - cop.subRow);
+                        if (distTarget < 0.1) {
+                            cop.pauseTimer = 100 + Math.floor(Math.random() * 150);
+                            const nc = Math.max(2, Math.min(27, cop.col + Math.floor((Math.random() - 0.5) * 8)));
+                            const nr = Math.max(2, Math.min(27, cop.row + Math.floor((Math.random() - 0.5) * 8)));
+                            if (isTileWalkable(nc, nr)) {
+                                cop.targetCol = nc;
+                                cop.targetRow = nr;
+                            }
+                        } else {
+                            const angle = Math.atan2(cop.targetRow - cop.subRow, cop.targetCol - cop.subCol);
+                            cop.facingAngle = angle;
+                            cop.subCol += Math.cos(angle) * cop.speed;
+                            cop.subRow += Math.sin(angle) * cop.speed;
+                            cop.col = Math.round(cop.subCol);
+                            cop.row = Math.round(cop.subRow);
                         }
                     }
+                }
+            });
 
-                    const dist = Math.hypot(player.col - cop.col, player.row - cop.row);
-                    if (dist < 4.5 && currentOrder && currentOrder.state === 'DELIVER') {
-                        playerSpotted = true;
-                    }
-                });
-            }
-
+            // Suspicion HUD Sync & Vignette Flash
             const suspicionHud = document.getElementById('suspicion-hud');
             const suspicionFill = document.getElementById('suspicionBarFill');
             const suspicionText = document.getElementById('suspicionPercent');
             const pursuitVignette = document.getElementById('hot-pursuit-vignette');
             const gameContainer = document.getElementById('game-container');
 
-            if (playerSpotted) {
-                suspicion = Math.min(100, suspicion + 1.2);
-                suspicionHud.classList.add('active');
-            } else {
-                suspicion = Math.max(0, suspicion - 0.5);
-                if (suspicion === 0) suspicionHud.classList.remove('active');
+            if (inAnyPursuit) suspicion = Math.min(100, suspicion + 1.2);
+            else if (suspicion > 0) suspicion = Math.max(0, suspicion - 0.4);
+
+            if (suspicionHud) {
+                if (suspicion > 0) suspicionHud.classList.add('active');
+                else suspicionHud.classList.remove('active');
             }
 
             if (pursuitVignette) {
-                if (suspicion > 40) pursuitVignette.classList.add('active');
+                if (inAnyPursuit || suspicion > 40) pursuitVignette.classList.add('active');
                 else pursuitVignette.classList.remove('active');
             }
 
-            // Chromatic Aberration Danger Filter at 85%+ Suspicion
             if (gameContainer) {
                 if (suspicion >= 85) gameContainer.classList.add('danger-chromatic');
                 else gameContainer.classList.remove('danger-chromatic');
             }
 
-            suspicionFill.style.width = `${suspicion}%`;
-            suspicionText.textContent = `${Math.floor(suspicion)}%`;
+            if (suspicionFill) suspicionFill.style.width = `${suspicion}%`;
+            if (suspicionText) suspicionText.textContent = `${Math.floor(suspicion)}%`;
 
-            if (suspicion >= 100) {
-                suspicion = 0;
-                suspicionHud.classList.remove('active');
-                if (pursuitVignette) pursuitVignette.classList.remove('active');
-                if (gameContainer) gameContainer.classList.remove('danger-chromatic');
-                player.cash = Math.floor(player.cash * 0.7);
-                player.stock = Math.max(0, player.stock - 3);
-                if (currentOrder) currentOrder = null;
-                AudioEngine.onRestock();
-                showNotification("🚔 CONTRÔLE POLICE ! Saisie de marchandise (-30% Cash, -3 Stock) !");
-                updateHUD();
-                renderWeedDashWidget();
+            if (suspicion >= 100 && !inAnyPursuit) {
+                triggerPoliceArrest();
             }
         }
 
+        function triggerPoliceArrest() {
+            suspicion = 0;
+            const suspicionHud = document.getElementById('suspicion-hud');
+            const pursuitVignette = document.getElementById('hot-pursuit-vignette');
+            const gameContainer = document.getElementById('game-container');
+            if (suspicionHud) suspicionHud.classList.remove('active');
+            if (pursuitVignette) pursuitVignette.classList.remove('active');
+            if (gameContainer) gameContainer.classList.remove('danger-chromatic');
+
+            // Punitive Arrest Consequences
+            player.cash = Math.floor(player.cash * 0.5); // 50% Cash Seized
+            player.stock = 0; // All Stock Confiscated
+            currentOrder = null; // Delivery Cancelled
+            player.col = 10;
+            player.row = 12;
+            player.subCol = 10.0;
+            player.subRow = 12.0;
+            player.path = [];
+
+            cops.forEach(c => { c.state = 'PATROL'; c.alertTimer = 0; });
+
+            AudioEngine.onRestock();
+            showNotification("🚔 ARRESTATION PAR LA POLICE ! 50% Cash Saisi & Stock Confisqué !");
+            updateHUD();
+            renderWeedDashWidget();
+        }
+
+        /* Random Police Events System */
+        const PoliceEvents = {
+            currentEvent: null,
+            timer: 0,
+            heliPos: { x: 400, y: 300, vx: 2.5, vy: 1.5 },
+            stingNpc: null,
+
+            triggerRandomEvent() {
+                const types = ['UNDERCOVER_STING', 'ROADBLOCK', 'HELICOPTER_SEARCHLIGHT', 'SAFEHOUSE_RAID'];
+                const eventType = types[Math.floor(Math.random() * types.length)];
+                this.currentEvent = eventType;
+                this.timer = 1800; // 30 seconds
+
+                if (eventType === 'UNDERCOVER_STING') {
+                    showNotification("🕵️ FAUX CLIENT DÉTECTÉ : Piège de la police infiltrée sur la place !");
+                    this.stingNpc = {
+                        col: 12 + Math.floor(Math.random() * 6),
+                        row: 12 + Math.floor(Math.random() * 6),
+                        subCol: 14.0, subRow: 14.0,
+                        isUndercover: true
+                    };
+                } else if (eventType === 'ROADBLOCK') {
+                    showNotification("🚧 BARRAGE POLICE : Axe central sous contrôle pendant 30s !");
+                } else if (eventType === 'HELICOPTER_SEARCHLIGHT') {
+                    showNotification("🚁 HÉLICOPTÈRE DE RECHERCHE : Projecteur géant sur la Place de Bretagne !");
+                } else if (eventType === 'SAFEHOUSE_RAID') {
+                    showNotification("🏢 RAID SUR LE KIOSQUE : Patrouille de police autour de la Planque !");
+                }
+            },
+
+            update() {
+                if (!this.currentEvent) return;
+
+                this.timer--;
+                if (this.timer <= 0) {
+                    this.currentEvent = null;
+                    this.stingNpc = null;
+                    showNotification("✅ Fin de l'alerte événement police !");
+                    return;
+                }
+
+                if (this.currentEvent === 'HELICOPTER_SEARCHLIGHT') {
+                    this.heliPos.x += this.heliPos.vx;
+                    this.heliPos.y += this.heliPos.vy;
+                    if (this.heliPos.x < 100 || this.heliPos.x > window.innerWidth - 100) this.heliPos.vx *= -1;
+                    if (this.heliPos.y < 100 || this.heliPos.y > window.innerHeight - 100) this.heliPos.vy *= -1;
+
+                    const pPos = gridToScreen(player.subCol, player.subRow, 0);
+                    const distHeli = Math.hypot(pPos.x - this.heliPos.x, pPos.y - this.heliPos.y);
+                    if (distHeli < 90 && !player.isStealth) {
+                        suspicion = 100;
+                        cops.forEach(c => c.state = 'PURSUIT');
+                        showNotification("🚁 REPÉRÉ PAR LE PROJECTEUR D'HÉLICO ! 100% ALERTE !");
+                    }
+                }
+            }
+        };
+
+        setInterval(() => PoliceEvents.triggerRandomEvent(), 90000);
+
         function drawCopSprite(x, y, cop) {
-            // Translucent Police Vision Cone with Scanning Oscillations
+            // Directional 3D Vision Cone
             ctx.save();
-            const sweepAngle = Math.sin(animTime * 5 + (cop.col + cop.row)) * 0.35;
-            ctx.fillStyle = suspicion > 20 ? 'rgba(255, 0, 85, 0.28)' : 'rgba(0, 255, 136, 0.16)';
+            const coneColor = cop.state === 'PURSUIT' ? 'rgba(255, 0, 85, 0.45)' :
+                             (cop.state === 'SUSPICIOUS' ? 'rgba(255, 215, 0, 0.35)' : 'rgba(0, 255, 136, 0.18)');
+            ctx.fillStyle = coneColor;
             ctx.beginPath();
             ctx.moveTo(x, y);
-            ctx.arc(x, y, 52, Math.PI * (0.25 + sweepAngle), Math.PI * (0.75 + sweepAngle));
+            const coneAngle = cop.facingAngle !== undefined ? cop.facingAngle : Math.PI * 0.5;
+            ctx.arc(x, y, 65, coneAngle - 0.6, coneAngle + 0.6);
             ctx.closePath();
             ctx.fill();
             ctx.restore();
@@ -2102,11 +2240,13 @@
             ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
             ctx.fill();
 
+            // Body Uniform
             ctx.fillStyle = '#1e3a8a';
             ctx.beginPath();
             ctx.roundRect(x - 7, y - 24, 14, 14, 3);
             ctx.fill();
 
+            // Head & Police Cap
             ctx.fillStyle = '#f7d0a1';
             ctx.beginPath();
             ctx.arc(x, y - 29, 6, 0, Math.PI * 2);
@@ -2115,14 +2255,24 @@
             ctx.fillStyle = '#0f172a';
             ctx.fillRect(x - 7, y - 35, 14, 5);
 
-            const isRed = Math.sin(animTime * 12) > 0;
-            ctx.fillStyle = isRed ? '#ff0055' : '#00d8ff';
-            ctx.shadowColor = isRed ? '#ff0055' : '#00d8ff';
-            ctx.shadowBlur = 12;
-            ctx.beginPath();
-            ctx.arc(x, y - 40, 4, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.shadowBlur = 0;
+            // Overhead Alert Indicators (? / !)
+            ctx.save();
+            if (cop.state === 'SUSPICIOUS') {
+                ctx.fillStyle = '#ffd700';
+                ctx.shadowColor = '#ffd700';
+                ctx.shadowBlur = 10;
+                ctx.font = '700 20px var(--font-tech)';
+                ctx.textAlign = 'center';
+                ctx.fillText('?', x, y - 42);
+            } else if (cop.state === 'PURSUIT') {
+                ctx.fillStyle = Math.sin(animTime * 12) > 0 ? '#ff0055' : '#ffffff';
+                ctx.shadowColor = '#ff0055';
+                ctx.shadowBlur = 12;
+                ctx.font = '900 22px var(--font-tech)';
+                ctx.textAlign = 'center';
+                ctx.fillText('!', x, y - 42);
+            }
+            ctx.restore();
         }
 
         /* ==========================================================================
@@ -2895,6 +3045,23 @@
                 ctx.restore();
             }
 
+            // Helicopter Searchlight Event Spot Beam (Screen Space)
+            if (PoliceEvents.currentEvent === 'HELICOPTER_SEARCHLIGHT') {
+                ctx.save();
+                const hx = PoliceEvents.heliPos.x;
+                const hy = PoliceEvents.heliPos.y;
+                ctx.fillStyle = 'rgba(255, 255, 220, 0.25)';
+                ctx.shadowColor = '#ffffaa';
+                ctx.shadowBlur = 30;
+                ctx.beginPath();
+                ctx.arc(hx, hy, 85, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.restore();
+            }
+
             // Render GTA Style Circular Mini-Radar
             renderRadar();
 
@@ -3012,6 +3179,7 @@
 
             updateTraffic();
             updatePolice();
+            PoliceEvents.update();
             updateTramway();
             updateNPCs();
             updateQTE();
