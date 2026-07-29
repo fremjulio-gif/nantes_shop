@@ -1018,73 +1018,64 @@
             for (let c = 0; c < GRID_SIZE; c++) {
                 map[c] = [];
                 for (let r = 0; r < GRID_SIZE; r++) {
-                    let type = 'cobblestone';
+                    let type = 'plaza_pavement';
 
-                    // Diagonal Tram Tracks (Line 3 passing Place de Bretagne)
-                    if (c + r === 20 || c + r === 21) {
+                    // 1. Central Vertical Tramway Axis (Line 3 Place de Bretagne)
+                    if (c === 14 || c === 15) {
                         type = 'tram_track';
                     }
-                    // Grass Patches
-                    else if ((c >= 2 && c <= 7 && r >= 12 && r <= 17) || (c >= 22 && c <= 27 && r >= 20 && r <= 25)) {
-                        type = 'grass';
-                    }
-                    // Paved outer perimeter road
-                    else if (c === 0 || r === 0 || c === GRID_SIZE - 1 || r === GRID_SIZE - 1) {
+                    // Outer Perimeter Road Loop for Traffic
+                    else if (c <= 2 || c >= 27 || r <= 2) {
                         type = 'paved_road';
                     }
-                    // Concentric Circular Plaza pattern
-                    else {
-                        const distFromCenter = Math.hypot(c - 15, r - 15);
-                        if (distFromCenter < 5) {
-                            type = 'plaza_center';
-                        }
+                    // South Tree Belt Lawn
+                    else if (r >= 25) {
+                        type = 'grass';
                     }
 
                     map[c][r] = { type: type };
                 }
             }
 
-            // 2. 1x1 Volumetric Pillars Construction
-            // Tour Bretagne (4x4 footprint at col 4..7, row 4..7, Height 14)
-            for (let c = 4; c <= 7; c++) {
-                for (let r = 4; r <= 7; r++) {
-                    setPillar(c, r, 14, 'tour_bretagne', {
-                        color: '#121620',
-                        edgeColor: '#f0f4f8',
-                        roofColor: '#1a202c',
+            // 2. 1x1 Volumetric Pillars & Architectural Placement
+            // A. North-West (Top-Left): Tour Bretagne (Base 4x4, Height 16)
+            for (let c = 3; c <= 6; c++) {
+                for (let r = 3; r <= 6; r++) {
+                    setPillar(c, r, 16, 'tour_bretagne', {
+                        color: '#10141f',
+                        edgeColor: '#ffffff',
+                        roofColor: '#1e293b',
+                        windows: true
+                    });
+                }
+            }
+            // Tour Bretagne Podium Steps (Staircase)
+            for (let c = 3; c <= 7; c++) {
+                setPillar(c, 7, 2, 'podium_step', { color: '#334155', edgeColor: '#94a3b8', roofColor: '#475569', windows: false });
+                setPillar(c, 8, 1, 'podium_step', { color: '#1e293b', edgeColor: '#64748b', roofColor: '#334155', windows: false });
+            }
+
+            // B. North-East (Top-Right): Commercial Building Block (Go Sport / Shops)
+            for (let c = 23; c <= 26; c++) {
+                for (let r = 3; r <= 8; r++) {
+                    setPillar(c, r, 5, 'commercial_block', {
+                        color: '#28201c',
+                        edgeColor: '#f59e0b',
+                        roofColor: '#475569',
                         windows: true
                     });
                 }
             }
 
-            // Surrounding Buildings (Place de Bretagne Haussmann style)
-            // East Block (col 22..25, row 4..7, Height 5)
-            for (let c = 22; c <= 25; c++) {
-                for (let r = 4; r <= 7; r++) {
-                    setPillar(c, r, 5, 'haussmann_east', {
-                        color: '#2a2421',
-                        edgeColor: '#d69e2e',
-                        roofColor: '#4a5568',
-                        windows: true
-                    });
-                }
-            }
+            // C. Central Tramway Station Bretagne (Shelter & Platform)
+            setPillar(14, 14, 2, 'tram_shelter', { color: '#0f2b3c', edgeColor: '#00d8ff', roofColor: '#0284c7', windows: false });
+            setPillar(15, 14, 2, 'tram_shelter', { color: '#0f2b3c', edgeColor: '#00d8ff', roofColor: '#0284c7', windows: false });
 
-            // South Block (col 5..8, row 22..25, Height 4)
-            for (let c = 5; c <= 8; c++) {
-                for (let r = 22; r <= 25; r++) {
-                    setPillar(c, r, 4, 'haussmann_south', {
-                        color: '#1f2937',
-                        edgeColor: '#6366f1',
-                        roofColor: '#374151',
-                        windows: true
-                    });
-                }
-            }
-
-            // Tramway Shelter (col 11..12, row 9, Height 2)
-            setPillar(11, 9, 2, 'tram_shelter', { color: '#0f2b3c', edgeColor: '#00d8ff', roofColor: '#103a52', windows: false });
-            setPillar(12, 9, 2, 'tram_shelter', { color: '#0f2b3c', edgeColor: '#00d8ff', roofColor: '#103a52', windows: false });
+            // D. South-West (Bottom-Left): Glass Kiosque Pavilion
+            setPillar(5, 22, 2, 'glass_kiosque', { color: '#064e3b', edgeColor: '#00ff88', roofColor: '#047857', windows: false });
+            setPillar(6, 22, 2, 'glass_kiosque', { color: '#064e3b', edgeColor: '#00ff88', roofColor: '#047857', windows: false });
+            setPillar(5, 23, 2, 'glass_kiosque', { color: '#064e3b', edgeColor: '#00ff88', roofColor: '#047857', windows: false });
+            setPillar(6, 23, 2, 'glass_kiosque', { color: '#064e3b', edgeColor: '#00ff88', roofColor: '#047857', windows: false });
         }
 
         generatePlaceDeBretagne();
@@ -1687,14 +1678,14 @@
                     renderList.push({
                         depth: (c + r) * 100,
                         draw: () => {
-                            let tileColor = '#161a24';
+                            let tileColor = '#1e2430';
                             let strokeColor = 'rgba(255,255,255,0.03)';
 
                             const tile = map[c][r];
-                            if (tile.type === 'tram_track') tileColor = '#10202b';
-                            else if (tile.type === 'grass') tileColor = '#0b261a';
-                            else if (tile.type === 'paved_road') tileColor = '#1a1d26';
-                            else if (tile.type === 'plaza_center') tileColor = '#1c2230';
+                            if (tile.type === 'tram_track') tileColor = '#0f202c';
+                            else if (tile.type === 'grass') tileColor = '#0b291a';
+                            else if (tile.type === 'paved_road') tileColor = '#181b22';
+                            else if (tile.type === 'plaza_pavement') tileColor = '#222836';
 
                             // Hover highlight
                             if (c === mouse.worldCol && r === mouse.worldRow) {
@@ -1703,15 +1694,27 @@
 
                             drawTileDiamond(pos.x, pos.y, TILE_W, TILE_H, tileColor, strokeColor);
 
-                            // Draw Tram Rails Detail
+                            // Draw Concentric Arc Engravings on Plaza Pavement
+                            if (tile.type === 'plaza_pavement') {
+                                const arcRad = ((c * 7 + r * 11) % 18) + 8;
+                                ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+                                ctx.lineWidth = 1;
+                                ctx.beginPath();
+                                ctx.arc(pos.x, pos.y, arcRad, 0, Math.PI);
+                                ctx.stroke();
+                            }
+
+                            // Draw Central Vertical Tram Rails & Sleepers
                             if (tile.type === 'tram_track') {
-                                ctx.strokeStyle = 'rgba(0, 216, 255, 0.4)';
+                                ctx.strokeStyle = 'rgba(0, 216, 255, 0.5)';
                                 ctx.lineWidth = 1.5;
                                 ctx.beginPath();
-                                ctx.moveTo(pos.x - 16, pos.y - 8);
-                                ctx.lineTo(pos.x + 16, pos.y + 8);
-                                ctx.moveTo(pos.x - 8, pos.y - 12);
-                                ctx.lineTo(pos.x + 24, pos.y + 4);
+                                // Left rail
+                                ctx.moveTo(pos.x - 6, pos.y - 12);
+                                ctx.lineTo(pos.x - 6, pos.y + 12);
+                                // Right rail
+                                ctx.moveTo(pos.x + 6, pos.y - 12);
+                                ctx.lineTo(pos.x + 6, pos.y + 12);
                                 ctx.stroke();
                             }
                         }
