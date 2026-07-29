@@ -1634,68 +1634,113 @@
             ctx.shadowBlur = 0;
         }
 
-        /* 3D Modern Nantes Isometric Tramcar Sprite Renderer */
-        function drawTramSprite(x, y, tram) {
-            const tramHeight = 22;
-            const drawY = y - tramHeight;
-
+        /* 3D Articulated 5-Module TAN Nantes Tramcar Sprite Renderer */
+        function drawArticulatedTramSprite(x, y, tram) {
             ctx.save();
 
-            // 1. Front Warning Light Beam on Ground Track
+            const dir = tram.direction; // 1 = Southbound, -1 = Northbound
+            const numModules = 5;
+            const moduleLength = 16;
+
+            // 1. Front Light Beam on Track
             ctx.fillStyle = 'rgba(0, 216, 255, 0.18)';
             ctx.beginPath();
             ctx.moveTo(x, y);
-            const frontY = tram.direction > 0 ? y + 45 : y - 45;
-            ctx.lineTo(x - 22, frontY);
-            ctx.lineTo(x + 22, frontY);
+            const beamY = dir > 0 ? y + 55 : y - 55;
+            ctx.lineTo(x - 26, beamY);
+            ctx.lineTo(x + 26, beamY);
             ctx.closePath();
             ctx.fill();
 
-            // 2. Tram Chassis Shadow
+            // 2. Long Ground Shadow
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
             ctx.beginPath();
-            ctx.ellipse(x, y + 2, 26, 10, 0, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.ellipse(x, y + 2, 38, 12, 0, 0, Math.PI * 2);
             ctx.fill();
 
-            // 3. Modern Nantes Tram Body (Metallic Sky Blue & White)
-            ctx.fillStyle = '#0284c7';
-            ctx.beginPath();
-            ctx.roundRect(x - 22, drawY + 8, 44, 16, 6);
-            ctx.fill();
+            // Draw 5 Articulated Modules
+            for (let i = 0; i < numModules; i++) {
+                const offset = (i - 2) * moduleLength * (dir > 0 ? 1 : -1);
+                const modX = x;
+                const modY = y + offset - 18; // Height offset
 
-            // Upper Cabin Roof (White)
-            ctx.fillStyle = '#f8fafc';
-            ctx.fillRect(x - 20, drawY - 4, 40, 12);
+                const isFront = (dir > 0 ? i === 4 : i === 0);
+                const isRear = (dir > 0 ? i === 0 : i === 4);
+                const isMiddle = (i === 2);
 
-            // Translucent Cyan Windows
-            ctx.fillStyle = 'rgba(0, 216, 255, 0.85)';
-            ctx.fillRect(x - 16, drawY - 2, 8, 8);
-            ctx.fillRect(x - 4, drawY - 2, 8, 8);
-            ctx.fillRect(x + 8, drawY - 2, 8, 8);
+                // Lower Body (TAN Emerald Green Stripe)
+                ctx.fillStyle = '#059669';
+                ctx.beginPath();
+                ctx.roundRect(modX - 16, modY + 6, 32, 14, 4);
+                ctx.fill();
 
-            // Accordion Rubber Joint
-            ctx.fillStyle = '#1e293b';
-            ctx.fillRect(x - 2, drawY - 4, 4, 28);
+                // Upper Roof (Crisp Pure White)
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(modX - 15, modY - 4, 30, 10);
 
-            // Overhead Electrical Pantograph & Sparks
-            ctx.strokeStyle = '#94a3b8';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.moveTo(x, drawY - 4);
-            ctx.lineTo(x, drawY - 22);
-            ctx.stroke();
+                // Panoramic Windows
+                ctx.fillStyle = 'rgba(0, 216, 255, 0.85)';
+                ctx.fillRect(modX - 11, modY - 2, 7, 7);
+                ctx.fillRect(modX + 4, modY - 2, 7, 7);
 
-            if (!tram.isStopped && Math.random() < 0.5) {
-                spawnParticles(x, drawY - 22, 3, '#00d8ff');
+                // Station Door Indicator Light when stopped
+                if (tram.isStopped) {
+                    ctx.fillStyle = '#00ff88';
+                    ctx.shadowColor = '#00ff88';
+                    ctx.shadowBlur = 8;
+                    ctx.fillRect(modX - 2, modY + 4, 4, 12);
+                    ctx.shadowBlur = 0;
+                }
+
+                // Dark Accordion Rubber Joint between modules
+                if (i < numModules - 1) {
+                    ctx.fillStyle = '#1e293b';
+                    ctx.fillRect(modX - 15, modY + 12, 30, 3);
+                }
+
+                // Middle Module Pantograph & Catenary Sparks
+                if (isMiddle) {
+                    ctx.strokeStyle = '#94a3b8';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(modX, modY - 4);
+                    ctx.lineTo(modX, modY - 24);
+                    ctx.stroke();
+
+                    if (!tram.isStopped && Math.random() < 0.4) {
+                        spawnParticles(modX, modY - 24, 3, '#00d8ff');
+                    }
+                }
+
+                // Front Streamlined Nose & LED Destination Board
+                if (isFront) {
+                    ctx.fillStyle = '#ffffaa';
+                    ctx.shadowColor = '#ffffaa';
+                    ctx.shadowBlur = 14;
+                    const headY = dir > 0 ? modY + 16 : modY - 2;
+                    ctx.fillRect(modX - 10, headY, 5, 4);
+                    ctx.fillRect(modX + 5, headY, 5, 4);
+                    ctx.shadowBlur = 0;
+
+                    ctx.fillStyle = '#1e1b4b';
+                    ctx.fillRect(modX - 14, modY - 6, 28, 6);
+                    ctx.fillStyle = '#ffd700';
+                    ctx.font = '700 8px var(--font-tech)';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(tram.lineName, modX, modY - 1);
+                }
+
+                // Rear Tail Module Lights
+                if (isRear) {
+                    ctx.fillStyle = '#ff0055';
+                    ctx.shadowColor = '#ff0055';
+                    ctx.shadowBlur = 8;
+                    const tailY = dir > 0 ? modY - 2 : modY + 16;
+                    ctx.fillRect(modX - 10, tailY, 4, 3);
+                    ctx.fillRect(modX + 6, tailY, 4, 3);
+                    ctx.shadowBlur = 0;
+                }
             }
-
-            // Headlights Glow
-            ctx.fillStyle = '#ffffaa';
-            ctx.shadowColor = '#ffffaa';
-            ctx.shadowBlur = 12;
-            const headY = tram.direction > 0 ? drawY + 20 : drawY + 4;
-            ctx.fillRect(x - 14, headY, 6, 4);
-            ctx.fillRect(x + 8, headY, 6, 4);
 
             ctx.restore();
         }
@@ -1753,93 +1798,120 @@
             }
         }
 
-        /* Tramway Line 3 Movement & Fast Travel & Passenger Boarding */
+        /* Dual Track TAN Nantes Tramway Manager & Physics */
+        const trams = [];
+
+        function spawnTram(track) {
+            const isTrack1 = (track === 1);
+            trams.push({
+                id: 'tan_' + Math.random().toString(36).substr(2, 6),
+                track: track,
+                col: isTrack1 ? 14 : 15,
+                row: isTrack1 ? -10.0 : 40.0,
+                direction: isTrack1 ? 1 : -1,
+                speed: 0.04,
+                cruiseSpeed: 0.04,
+                isStopped: false,
+                stopTimer: 0,
+                hasStoppedAtStation: false,
+                lineName: isTrack1 ? "L3 NEUSTRIE" : "L3 MARCEL PAUL"
+            });
+        }
+
+        // Spawn initial tram on Track 1
+        spawnTram(1);
+
+        // Procedural Dual Spawner Every 35 to 60 seconds
+        setInterval(() => {
+            if (trams.length < 3) {
+                spawnTram(Math.random() > 0.5 ? 1 : 2);
+            }
+        }, 40000);
+
         function updateTramway() {
-            if (tramcar.isStopped) {
-                tramcar.stopTimer--;
+            for (let i = trams.length - 1; i >= 0; i--) {
+                const tram = trams[i];
 
-                // Passengers Alighting & Boarding at Station Bretagne
-                if (tramcar.stopTimer === 350) {
-                    const count = 1 + Math.floor(Math.random() * 3);
-                    for (let i = 0; i < count; i++) {
-                        const sideCol = Math.random() > 0.5 ? 13 : 16;
-                        npcs.push({
-                            id: 'tram_' + Math.random().toString(36).substr(2, 6),
-                            col: sideCol,
-                            row: 14,
-                            subCol: sideCol,
-                            subRow: 14,
-                            targetCol: sideCol + (sideCol === 13 ? -3 : 3),
-                            targetRow: 14 + Math.floor((Math.random() - 0.5) * 4),
-                            color: '#00d8ff',
-                            hasDeal: false,
-                            rewardCash: 40,
-                            rewardXP: 20,
-                            pulseAnim: 0,
-                            pauseTimer: 0
-                        });
-                        const sPos = gridToScreen(sideCol, 14, 0);
-                        spawnFloatingText("🚊 PASSAGER ARRI VÉ", sPos.x, sPos.y - 20, '#00d8ff', false);
+                // Station Bretagne Approaching Deceleration & Stop Logic
+                if (Math.abs(tram.row - 14.0) < 3.5 && !tram.hasStoppedAtStation && !tram.isStopped) {
+                    tram.speed = Math.max(0.005, tram.speed - 0.001);
+                    if (Math.abs(tram.row - 14.0) < 0.25) {
+                        tram.speed = 0;
+                        tram.isStopped = true;
+                        tram.stopTimer = 540; // 9 seconds stop
+                        tram.hasStoppedAtStation = true;
+                        AudioEngine.onRestock();
+                        showNotification(`🚊 TRAMWAY TAN (${tram.lineName}) : Arrêt Station Bretagne (9s) !`);
                     }
                 }
 
-                // Check nearby NPCs boarding the tram
-                for (let i = npcs.length - 1; i >= 0; i--) {
-                    const n = npcs[i];
-                    if (Math.abs(n.col - tramcar.col) <= 2 && Math.abs(n.row - 14) <= 1.5) {
-                        const nPos = gridToScreen(n.subCol, n.subRow, 0);
-                        spawnFloatingText("🚪 EMBARQUÉ", nPos.x, nPos.y - 20, '#ffd700', false);
-                        npcs.splice(i, 1);
+                if (tram.isStopped) {
+                    tram.stopTimer--;
+
+                    // Passengers Alighting & Boarding
+                    if (tram.stopTimer === 500) {
+                        const count = 1 + Math.floor(Math.random() * 3);
+                        for (let k = 0; k < count; k++) {
+                            const sideCol = tram.track === 1 ? 13 : 16;
+                            npcs.push({
+                                id: 'tram_' + Math.random().toString(36).substr(2, 6),
+                                col: sideCol,
+                                row: 14,
+                                subCol: sideCol,
+                                subRow: 14,
+                                targetCol: sideCol + (sideCol === 13 ? -3 : 3),
+                                targetRow: 14 + Math.floor((Math.random() - 0.5) * 4),
+                                color: '#00d8ff',
+                                hasDeal: false,
+                                rewardCash: 40,
+                                rewardXP: 20,
+                                pulseAnim: 0,
+                                pauseTimer: 0
+                            });
+                            const sPos = gridToScreen(sideCol, 14, 0);
+                            spawnFloatingText("🚊 PASSAGER TAN", sPos.x, sPos.y - 20, '#00d8ff', false);
+                        }
+                    }
+
+                    if (tram.stopTimer <= 0) {
+                        tram.isStopped = false;
+                        AudioEngine.onRestock();
+                    }
+                } else {
+                    // Smooth Acceleration back to cruise speed
+                    if (tram.speed < tram.cruiseSpeed) {
+                        tram.speed = Math.min(tram.cruiseSpeed, tram.speed + 0.0008);
                     }
                 }
 
-                if (tramcar.stopTimer <= 0) {
-                    tramcar.isStopped = false;
-                    tramcar.direction *= -1; // Reverse route
-                    AudioEngine.onRestock();
+                tram.row += tram.direction * tram.speed;
+
+                // Despawn when out of bounds
+                if (tram.row < -12 || tram.row > 42) {
+                    trams.splice(i, 1);
+                    continue;
                 }
-                return;
-            }
 
-            tramcar.row += tramcar.direction * tramcar.speed;
-
-            // Check Station Bretagne Stop at Center (Row 14)
-            if (Math.abs(tramcar.row - 14.0) < 0.15 && Math.random() < 0.05) {
-                tramcar.isStopped = true;
-                tramcar.stopTimer = 360; // 6 seconds stop
-                AudioEngine.onRestock();
-                showNotification("🚊 TRAMWAY LIGNE 3 : Arrêt à la Station Bretagne ! (Embarquement / Débarquement)");
-            }
-
-            if (tramcar.row < 0) {
-                tramcar.row = 0;
-                tramcar.direction = 1;
-            } else if (tramcar.row > 29) {
-                tramcar.row = 29;
-                tramcar.direction = -1;
-            }
-
-            // Check Player Tram Collision / Fast Travel Boarding
-            const distTram = Math.hypot(player.subCol - tramcar.col, player.subRow - tramcar.row);
-            if (distTram < 1.2) {
-                if (tramcar.isStopped) {
-                    // Fast Travel & Police Reset
-                    player.col = tramcar.direction > 0 ? 27 : 2;
-                    player.subCol = player.col;
-                    player.row = 14;
-                    player.subRow = 14;
-                    suspicion = 0;
-                    const suspicionHud = document.getElementById('suspicion-hud');
-                    if (suspicionHud) suspicionHud.classList.remove('active');
-                    AudioEngine.onLevelUp();
-                    showNotification("🚊 FAST TRAVEL TRAMWAY ! Évasion réussie de la police !");
-                } else if (player.stunned <= 0) {
-                    // Tram Knockdown Danger
-                    player.stunned = 120; // 2s Stun
-                    shakeTime = 12;
-                    shakeIntensity = 10;
-                    AudioEngine.onStep('tram_track');
-                    showNotification("💥 PERCUTÉ PAR LE TRAMWAY ! Joueur étourdi 2s !");
+                // Check Player Tram Collision / Fast Travel Boarding
+                const distTram = Math.hypot(player.subCol - tram.col, player.subRow - tram.row);
+                if (distTram < 1.4) {
+                    if (tram.isStopped) {
+                        player.col = tram.direction > 0 ? 27 : 2;
+                        player.subCol = player.col;
+                        player.row = 14;
+                        player.subRow = 14;
+                        suspicion = 0;
+                        const suspicionHud = document.getElementById('suspicion-hud');
+                        if (suspicionHud) suspicionHud.classList.remove('active');
+                        AudioEngine.onLevelUp();
+                        showNotification("🚊 FAST TRAVEL TRAMWAY TAN ! Évasion réussie de la police !");
+                    } else if (player.stunned <= 0) {
+                        player.stunned = 120; // 2s Stun
+                        shakeTime = 12;
+                        shakeIntensity = 10;
+                        AudioEngine.onStep('tram_track');
+                        showNotification("💥 PERCUTÉ PAR LE TRAMWAY TAN ! Joueur étourdi 2s !");
+                    }
                 }
             }
         }
@@ -2703,13 +2775,15 @@
                 renderList.push({ depth: (Math.floor(car.subCol) + Math.floor(car.subRow)) * 100 + 30, draw: () => drawCarSprite(pos.x, pos.y, car) });
             });
 
-            // Line 3 Tramway Carriage Renderer
-            const tPos = gridToScreen(tramcar.col, tramcar.row, 0);
-            renderList.push({
-                depth: (Math.floor(tramcar.col) + Math.floor(tramcar.row)) * 100 + 35,
-                draw: () => {
-                    drawTramSprite(tPos.x, tPos.y, tramcar);
-                }
+            // Line 3 TAN Nantes Articulated Tramways Renderer
+            trams.forEach(t => {
+                const tPos = gridToScreen(t.col, t.row, 0);
+                renderList.push({
+                    depth: (Math.floor(t.col) + Math.floor(t.row)) * 100 + 35,
+                    draw: () => {
+                        drawArticulatedTramSprite(tPos.x, tPos.y, t);
+                    }
+                });
             });
 
             if (currentOrder) {
