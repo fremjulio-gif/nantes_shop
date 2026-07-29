@@ -1634,6 +1634,72 @@
             ctx.shadowBlur = 0;
         }
 
+        /* 3D Modern Nantes Isometric Tramcar Sprite Renderer */
+        function drawTramSprite(x, y, tram) {
+            const tramHeight = 22;
+            const drawY = y - tramHeight;
+
+            ctx.save();
+
+            // 1. Front Warning Light Beam on Ground Track
+            ctx.fillStyle = 'rgba(0, 216, 255, 0.18)';
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            const frontY = tram.direction > 0 ? y + 45 : y - 45;
+            ctx.lineTo(x - 22, frontY);
+            ctx.lineTo(x + 22, frontY);
+            ctx.closePath();
+            ctx.fill();
+
+            // 2. Tram Chassis Shadow
+            ctx.beginPath();
+            ctx.ellipse(x, y + 2, 26, 10, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+            ctx.fill();
+
+            // 3. Modern Nantes Tram Body (Metallic Sky Blue & White)
+            ctx.fillStyle = '#0284c7';
+            ctx.beginPath();
+            ctx.roundRect(x - 22, drawY + 8, 44, 16, 6);
+            ctx.fill();
+
+            // Upper Cabin Roof (White)
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(x - 20, drawY - 4, 40, 12);
+
+            // Translucent Cyan Windows
+            ctx.fillStyle = 'rgba(0, 216, 255, 0.85)';
+            ctx.fillRect(x - 16, drawY - 2, 8, 8);
+            ctx.fillRect(x - 4, drawY - 2, 8, 8);
+            ctx.fillRect(x + 8, drawY - 2, 8, 8);
+
+            // Accordion Rubber Joint
+            ctx.fillStyle = '#1e293b';
+            ctx.fillRect(x - 2, drawY - 4, 4, 28);
+
+            // Overhead Electrical Pantograph & Sparks
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(x, drawY - 4);
+            ctx.lineTo(x, drawY - 22);
+            ctx.stroke();
+
+            if (!tram.isStopped && Math.random() < 0.5) {
+                spawnParticles(x, drawY - 22, 3, '#00d8ff');
+            }
+
+            // Headlights Glow
+            ctx.fillStyle = '#ffffaa';
+            ctx.shadowColor = '#ffffaa';
+            ctx.shadowBlur = 12;
+            const headY = tram.direction > 0 ? drawY + 20 : drawY + 4;
+            ctx.fillRect(x - 14, headY, 6, 4);
+            ctx.fillRect(x + 8, headY, 6, 4);
+
+            ctx.restore();
+        }
+
         /* ==========================================================================
            6. POLICE SYSTEM (PATROULS & SUSPICION METER)
            ========================================================================== */
@@ -1687,10 +1753,46 @@
             }
         }
 
-        /* Tramway Line 3 Movement & Fast Travel */
+        /* Tramway Line 3 Movement & Fast Travel & Passenger Boarding */
         function updateTramway() {
             if (tramcar.isStopped) {
                 tramcar.stopTimer--;
+
+                // Passengers Alighting & Boarding at Station Bretagne
+                if (tramcar.stopTimer === 350) {
+                    const count = 1 + Math.floor(Math.random() * 3);
+                    for (let i = 0; i < count; i++) {
+                        const sideCol = Math.random() > 0.5 ? 13 : 16;
+                        npcs.push({
+                            id: 'tram_' + Math.random().toString(36).substr(2, 6),
+                            col: sideCol,
+                            row: 14,
+                            subCol: sideCol,
+                            subRow: 14,
+                            targetCol: sideCol + (sideCol === 13 ? -3 : 3),
+                            targetRow: 14 + Math.floor((Math.random() - 0.5) * 4),
+                            color: '#00d8ff',
+                            hasDeal: false,
+                            rewardCash: 40,
+                            rewardXP: 20,
+                            pulseAnim: 0,
+                            pauseTimer: 0
+                        });
+                        const sPos = gridToScreen(sideCol, 14, 0);
+                        spawnFloatingText("🚊 PASSAGER ARRI VÉ", sPos.x, sPos.y - 20, '#00d8ff', false);
+                    }
+                }
+
+                // Check nearby NPCs boarding the tram
+                for (let i = npcs.length - 1; i >= 0; i--) {
+                    const n = npcs[i];
+                    if (Math.abs(n.col - tramcar.col) <= 2 && Math.abs(n.row - 14) <= 1.5) {
+                        const nPos = gridToScreen(n.subCol, n.subRow, 0);
+                        spawnFloatingText("🚪 EMBARQUÉ", nPos.x, nPos.y - 20, '#ffd700', false);
+                        npcs.splice(i, 1);
+                    }
+                }
+
                 if (tramcar.stopTimer <= 0) {
                     tramcar.isStopped = false;
                     tramcar.direction *= -1; // Reverse route
@@ -1706,7 +1808,7 @@
                 tramcar.isStopped = true;
                 tramcar.stopTimer = 360; // 6 seconds stop
                 AudioEngine.onRestock();
-                showNotification("🚊 TRAMWAY LIGNE 3 : Arrêt à la Station Bretagne ! (Embarquez pour fuir la police)");
+                showNotification("🚊 TRAMWAY LIGNE 3 : Arrêt à la Station Bretagne ! (Embarquement / Débarquement)");
             }
 
             if (tramcar.row < 0) {
@@ -2601,6 +2703,15 @@
                 renderList.push({ depth: (Math.floor(car.subCol) + Math.floor(car.subRow)) * 100 + 30, draw: () => drawCarSprite(pos.x, pos.y, car) });
             });
 
+            // Line 3 Tramway Carriage Renderer
+            const tPos = gridToScreen(tramcar.col, tramcar.row, 0);
+            renderList.push({
+                depth: (Math.floor(tramcar.col) + Math.floor(tramcar.row)) * 100 + 35,
+                draw: () => {
+                    drawTramSprite(tPos.x, tPos.y, tramcar);
+                }
+            });
+
             if (currentOrder) {
                 if (currentOrder.state === 'PICKUP') {
                     const kPos = gridToScreen(currentOrder.pickupCol, currentOrder.pickupRow, 0);
@@ -2764,6 +2875,42 @@
             }
         }
 
+        /* Autonomous NPC Wandering & Social AI */
+        function updateNPCs() {
+            npcs.forEach(n => {
+                if (!n.pauseTimer) n.pauseTimer = 0;
+                if (!n.targetCol) { n.targetCol = n.col; n.targetRow = n.row; }
+
+                if (n.pauseTimer > 0) {
+                    n.pauseTimer--;
+                    return;
+                }
+
+                const dist = Math.hypot(n.targetCol - n.subCol, n.targetRow - n.subRow);
+                if (dist < 0.08) {
+                    n.subCol = n.targetCol;
+                    n.subRow = n.targetRow;
+                    n.col = n.targetCol;
+                    n.row = n.targetRow;
+
+                    n.pauseTimer = 120 + Math.floor(Math.random() * 240); // 2-4s pause
+                    const nc = Math.max(2, Math.min(27, n.col + Math.floor((Math.random() - 0.5) * 6)));
+                    const nr = Math.max(2, Math.min(27, n.row + Math.floor((Math.random() - 0.5) * 6)));
+                    if (isTileWalkable(nc, nr)) {
+                        n.targetCol = nc;
+                        n.targetRow = nr;
+                    }
+                } else {
+                    const angle = Math.atan2(n.targetRow - n.subRow, n.targetCol - n.subCol);
+                    const speed = 0.035;
+                    n.subCol += Math.cos(angle) * speed;
+                    n.subRow += Math.sin(angle) * speed;
+                    n.col = Math.round(n.subCol);
+                    n.row = Math.round(n.subRow);
+                }
+            });
+        }
+
         /* Game Loop Logic Update */
         function updateGameLogic() {
             // Player Stunned Lockout (Tram Knockdown)
@@ -2777,6 +2924,7 @@
             updateTraffic();
             updatePolice();
             updateTramway();
+            updateNPCs();
             updateQTE();
 
             // VIP Client Proximity Check
@@ -2962,12 +3110,6 @@
             // Target click ripple effect
             const pPos = gridToScreen(grid.col, grid.row, 0);
             clickRipples.push({ x: pPos.x, y: pPos.y, radius: 4, alpha: 1.0 });
-
-            // Click Player -> Customization Modal
-            if (grid.col === player.col && grid.row === player.row) {
-                openCustomizationModal();
-                return;
-            }
 
             // Click NPC -> Interact / Deal
             const clickedNPC = npcs.find(n => n.col === grid.col && n.row === grid.row);
