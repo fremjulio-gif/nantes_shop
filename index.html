@@ -803,6 +803,18 @@
             <button id="btnCustomize" class="action-btn">
                 <span>🎨</span> Style du Joueur
             </button>
+
+            <button id="btnPrestige" class="action-btn" style="border-color: #ff0055; color: #ff0055; font-weight: 700;">
+                <span>👑</span> Prestige (Syndicate)
+            </button>
+
+            <button id="btnMonopoly" class="action-btn" style="border-color: #ffd700; color: #ffd700;">
+                <span>🏢</span> Monopoly Immobilier
+            </button>
+
+            <button id="btnTalents" class="action-btn" style="border-color: #00ff88; color: #00ff88;">
+                <span>🎒</span> Arbre de Compétences
+            </button>
         </div>
 
         <!-- Hot Pursuit Red/Blue Siren Flashing Overlay Vignette -->
@@ -969,6 +981,92 @@
                         <div style="font-weight: 700; font-size: 15px;">Delivery Drone</div>
                         <div style="font-size: 11px; color: var(--text-dim);">Vitesse: 3.0x | Vol Volant | Capacité: 40</div>
                         <button onclick="selectVehicle('drone')" class="action-btn" style="padding: 6px 12px; font-size: 12px; margin-top: 4px; border-color: var(--neon-pink); color: var(--neon-pink);">1000 €</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 👑 Prestige Modal (Syndicate) -->
+        <div id="modalPrestige" class="modal-overlay">
+            <div class="glass-panel modal-content" style="width: 480px; text-align: center;">
+                <div class="modal-header">
+                    <h2 style="color: #ff0055;">👑 Nantes Syndicate / Blanchiment</h2>
+                    <button id="btnClosePrestige" class="close-btn">&times;</button>
+                </div>
+                <div style="padding: 15px; font-size: 13px; line-height: 1.6; color: var(--text-light);">
+                    <p>Réinitialisez vos fonds et votre stock pour blanchir votre empire et obtenir des <strong style="color: #ffd700;">Jetons d'Influence</strong> permanents !</p>
+                    <div style="margin: 15px 0; padding: 12px; background: rgba(255,0,85,0.15); border: 1px solid #ff0055; border-radius: 8px;">
+                        <div>Niveau de Prestige Actuel : <strong id="lblPrestigeLvl" style="font-size: 18px; color: #ff0055;">0</strong></div>
+                        <div>Multiplicateur de Gains : <strong id="lblPrestigeMult" style="font-size: 18px; color: #00ff88;">+0%</strong></div>
+                    </div>
+                    <p style="font-size: 11px; color: var(--text-dim);">Requis : 5 000 € Cash ou Niveau 10+</p>
+                    <button id="btnDoPrestige" class="action-btn" style="margin-top: 15px; width: 100%; justify-content: center; background: #ff0055; color: #fff; font-weight: 700;">
+                        🔥 BLANCHIR L'EMPIRE (RESET & PRESTIGE)
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🏢 Monopoly Immobilier Modal -->
+        <div id="modalMonopoly" class="modal-overlay">
+            <div class="glass-panel modal-content" style="width: 520px;">
+                <div class="modal-header">
+                    <h2 style="color: #ffd700;">🏢 Mainmise sur la Place de Bretagne</h2>
+                    <button id="btnCloseMonopoly" class="close-btn">&times;</button>
+                </div>
+                <div class="garage-grid" style="padding: 10px;">
+                    <div class="garage-card">
+                        <span style="font-size: 28px;">🏙️</span>
+                        <div style="font-weight: 700;">Penthouse Tour Bretagne</div>
+                        <div style="font-size: 11px; color: var(--text-dim);">Revenu Passif: +15€ / 10s | Enseigne Or</div>
+                        <button onclick="buyProperty('penthouse', 2500)" class="action-btn" style="margin-top: 6px; border-color: #ffd700; color: #ffd700;">2500 €</button>
+                    </div>
+                    <div class="garage-card">
+                        <span style="font-size: 28px;">🍸</span>
+                        <div style="font-weight: 700;">Le Club Underground</div>
+                        <div style="font-size: 11px; color: var(--text-dim);">Revenu Passif: +8€ / 10s | Enseigne Violette</div>
+                        <button onclick="buyProperty('undergroundClub', 1200)" class="action-btn" style="margin-top: 6px; border-color: var(--neon-pink); color: var(--neon-pink);">1200 €</button>
+                    </div>
+                    <div class="garage-card">
+                        <span style="font-size: 28px;">🍺</span>
+                        <div style="font-weight: 700;">Le Bar de la Station</div>
+                        <div style="font-size: 11px; color: var(--text-dim);">Revenu Passif: +5€ / 10s | Enseigne Cyan</div>
+                        <button onclick="buyProperty('stationBar', 800)" class="action-btn" style="margin-top: 6px; border-color: var(--neon-blue); color: var(--neon-blue);">800 €</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 🎒 Talent Skill Tree Modal -->
+        <div id="modalTalents" class="modal-overlay">
+            <div class="glass-panel modal-content" style="width: 520px;">
+                <div class="modal-header">
+                    <h2 style="color: #00ff88;">🎒 Arbre de Compétences (Talents)</h2>
+                    <button id="btnCloseTalents" class="close-btn">&times;</button>
+                </div>
+                <div style="padding: 10px; font-size: 13px;">
+                    <div style="text-align: center; margin-bottom: 12px; color: #ffd700; font-weight: 700;">
+                        Points de Talent Disponibles : <span id="lblSkillPoints">0</span>
+                    </div>
+                    <div class="garage-grid">
+                        <div class="garage-card">
+                            <span style="font-size: 24px;">⚡</span>
+                            <div style="font-weight: 700;">Branche Agilité</div>
+                            <div style="font-size: 11px; color: var(--text-dim);">Stamina -30% | Vitesse +15%</div>
+                            <button onclick="upgradeSkill('agility')" class="action-btn" style="margin-top: 6px; border-color: #00ff88; color: #00ff88;">+1 Point (Niv. <span id="skillLvlAgility">0</span>)</button>
+                        </div>
+                        <div class="garage-card">
+                            <span style="font-size: 24px;">🥷</span>
+                            <div style="font-weight: 700;">Branche Furtivité</div>
+                            <div style="font-size: 11px; color: var(--text-dim);">Champ de Vision Police -30%</div>
+                            <button onclick="upgradeSkill('stealth')" class="action-btn" style="margin-top: 6px; border-color: #00d8ff; color: #00d8ff;">+1 Point (Niv. <span id="skillLvlStealth">0</span>)</button>
+                        </div>
+                        <div class="garage-card">
+                            <span style="font-size: 24px;">💰</span>
+                            <div style="font-weight: 700;">Branche Business</div>
+                            <div style="font-size: 11px; color: var(--text-dim);">Pourboires VIP +50% | Restock -50%</div>
+                            <button onclick="upgradeSkill('business')" class="action-btn" style="margin-top: 6px; border-color: #ffd700; color: #ffd700;">+1 Point (Niv. <span id="skillLvlBusiness">0</span>)</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3631,6 +3729,119 @@
             previewCtx.scale(2.2, 2.2);
             drawPlayerSprite(32, 60, player.colors);
             previewCtx.restore();
+        }
+
+        /* ==========================================================================
+           13. ENDGAME & RETENTION ENGINE (PRESTIGE, MONOPOLY & TALENTS)
+           ========================================================================== */
+        const btnPrestige = document.getElementById('btnPrestige');
+        if (btnPrestige) {
+            btnPrestige.addEventListener('click', () => {
+                AudioEngine.init();
+                document.getElementById('lblPrestigeLvl').textContent = prestigeLevel;
+                document.getElementById('lblPrestigeMult').textContent = `+${prestigeLevel * 25}%`;
+                document.getElementById('modalPrestige').classList.add('active');
+            });
+        }
+        const btnClosePrestige = document.getElementById('btnClosePrestige');
+        if (btnClosePrestige) {
+            btnClosePrestige.addEventListener('click', () => {
+                document.getElementById('modalPrestige').classList.remove('active');
+            });
+        }
+
+        const btnDoPrestige = document.getElementById('btnDoPrestige');
+        if (btnDoPrestige) {
+            btnDoPrestige.addEventListener('click', () => {
+                if (player.cash >= 5000 || player.level >= 10) {
+                    prestigeLevel++;
+                    influenceTokens += 5;
+                    player.cash = 100;
+                    player.stock = 10;
+                    player.level = 1;
+                    player.xp = 0;
+                    player.xpToNext = 100;
+                    AudioEngine.onLevelUp();
+                    showNotification(`🔥 BLANCHIMENT RÉUSSI ! Niveau Prestige ${prestigeLevel} (+${prestigeLevel * 25}% Gains) !`);
+                    document.getElementById('modalPrestige').classList.remove('active');
+                    updateHUD();
+                } else {
+                    showNotification("❌ Préquis non atteints (5000€ Cash ou Niv 10 requis) !");
+                }
+            });
+        }
+
+        const btnMonopoly = document.getElementById('btnMonopoly');
+        if (btnMonopoly) {
+            btnMonopoly.addEventListener('click', () => {
+                AudioEngine.init();
+                document.getElementById('modalMonopoly').classList.add('active');
+            });
+        }
+        const btnCloseMonopoly = document.getElementById('btnCloseMonopoly');
+        if (btnCloseMonopoly) {
+            btnCloseMonopoly.addEventListener('click', () => {
+                document.getElementById('modalMonopoly').classList.remove('active');
+            });
+        }
+
+        function buyProperty(key, cost) {
+            if (player.cash >= cost && !realEstate[key]) {
+                player.cash -= cost;
+                realEstate[key] = true;
+                AudioEngine.onLevelUp();
+                showNotification("🏢 PROPRIÉTÉ ACQUISE ! Revenu passif généré toutes les 10s !");
+                updateHUD();
+            } else if (realEstate[key]) {
+                showNotification("ℹ️ Vous possédez déjà cette propriété !");
+            } else {
+                showNotification("❌ Cash insuffisant pour acheter cette propriété !");
+            }
+        }
+
+        // Real Estate Passive Income Generator
+        setInterval(() => {
+            let income = 0;
+            if (realEstate.penthouse) income += 15;
+            if (realEstate.undergroundClub) income += 8;
+            if (realEstate.stationBar) income += 5;
+            if (income > 0) {
+                player.cash += Math.floor(income * (1 + prestigeLevel * 0.25));
+                updateHUD();
+            }
+        }, 10000);
+
+        const btnTalents = document.getElementById('btnTalents');
+        if (btnTalents) {
+            btnTalents.addEventListener('click', () => {
+                AudioEngine.init();
+                document.getElementById('lblSkillPoints').textContent = skillPoints;
+                document.getElementById('skillLvlAgility').textContent = skills.agility;
+                document.getElementById('skillLvlStealth').textContent = skills.stealth;
+                document.getElementById('skillLvlBusiness').textContent = skills.business;
+                document.getElementById('modalTalents').classList.add('active');
+            });
+        }
+        const btnCloseTalents = document.getElementById('btnCloseTalents');
+        if (btnCloseTalents) {
+            btnCloseTalents.addEventListener('click', () => {
+                document.getElementById('modalTalents').classList.remove('active');
+            });
+        }
+
+        function upgradeSkill(type) {
+            if (skillPoints >= 1) {
+                skillPoints--;
+                skills[type]++;
+                AudioEngine.onLevelUp();
+                document.getElementById('lblSkillPoints').textContent = skillPoints;
+                const fieldId = 'skillLvl' + type.charAt(0).toUpperCase() + type.slice(1);
+                const el = document.getElementById(fieldId);
+                if (el) el.textContent = skills[type];
+                showNotification(`🎒 SKILL AMÉLIORÉ : Branche ${type.toUpperCase()} Niveau ${skills[type]} !`);
+            } else {
+                showNotification("❌ Aucun point de compétence disponible !");
+            }
         }
 
         /* Start Render Loop & Initial HUD Sync */
