@@ -427,6 +427,71 @@
             font-weight: 600;
         }
 
+        /* Hot Pursuit Red/Blue Siren Flashing Vignette */
+        #hot-pursuit-vignette {
+            position: absolute;
+            inset: 0;
+            pointer-events: none;
+            z-index: 85;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            box-shadow: inset 0 0 100px rgba(255, 0, 85, 0.6);
+            animation: sirenPulse 0.5s infinite alternate;
+        }
+
+        #hot-pursuit-vignette.active {
+            opacity: 1;
+        }
+
+        @keyframes sirenPulse {
+            0% { box-shadow: inset 0 0 90px rgba(255, 0, 85, 0.7); }
+            100% { box-shadow: inset 0 0 90px rgba(0, 216, 255, 0.7); }
+        }
+
+        /* Custom Neon Crosshair Cursor */
+        canvas#gameCanvas {
+            cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="none" stroke="%2300ff88" stroke-width="2"/><circle cx="12" cy="12" r="2" fill="%2300ff88"/></svg>') 12 12, crosshair !important;
+        }
+
+        /* Chromatic Aberration Danger Distortion Effect */
+        #game-container.danger-chromatic {
+            filter: drop-shadow(-3px 0px 0px rgba(255, 0, 85, 0.7)) drop-shadow(3px 0px 0px rgba(0, 216, 255, 0.7));
+            animation: chromaticFlicker 0.15s infinite alternate;
+        }
+
+        @keyframes chromaticFlicker {
+            0% { filter: drop-shadow(-2px 0px 0px rgba(255, 0, 85, 0.6)) drop-shadow(2px 0px 0px rgba(0, 216, 255, 0.6)); }
+            100% { filter: drop-shadow(-5px 0px 0px rgba(255, 0, 85, 0.9)) drop-shadow(5px 0px 0px rgba(0, 216, 255, 0.9)); }
+        }
+
+        .dash-btn {
+            border-color: var(--neon-green) !important;
+            color: var(--neon-green) !important;
+        }
+
+        .garage-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+        }
+
+        .garage-card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            align-items: center;
+            text-align: center;
+        }
+
+        .garage-card.active {
+            border-color: var(--neon-green);
+            box-shadow: 0 0 16px rgba(0, 255, 136, 0.3);
+        }
+
         .pulse-dot {
             width: 8px;
             height: 8px;
@@ -666,9 +731,42 @@
                 <span>🏬</span> Ravitaillement (20€ -> +5 Stock)
             </button>
 
+            <button id="btnGarage" class="action-btn" style="border-color: var(--neon-gold); color: var(--neon-gold);">
+                <span>🛴</span> Garage Véhicules
+            </button>
+
+            <button id="btnDash" class="action-btn dash-btn">
+                <span>⚡</span> DASH SPRINT (Espace)
+            </button>
+
+            <button id="btnSafehouse" class="action-btn" style="border-color: var(--neon-blue); color: var(--neon-blue);">
+                <span>🏬</span> Planque & Hub (500 €)
+            </button>
+
             <button id="btnCustomize" class="action-btn">
                 <span>🎨</span> Style du Joueur
             </button>
+        </div>
+
+        <!-- Hot Pursuit Red/Blue Siren Flashing Overlay Vignette -->
+        <div id="hot-pursuit-vignette"></div>
+
+        <!-- Stealth Vision Eye Indicator Badge -->
+        <div id="stealth-badge" class="glass-panel" style="position: absolute; top: 90px; right: 20px; padding: 8px 16px; display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 12px; z-index: 20;">
+            <span id="stealthEyeIcon" style="font-size: 18px;">👁️</span>
+            <span id="stealthLabel" style="color: var(--neon-green);">VISIBLE</span>
+        </div>
+
+        <!-- Radio Nantes Synthwave Player Widget -->
+        <div id="radio-widget" class="glass-panel" style="position: absolute; top: 140px; right: 20px; width: 220px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; z-index: 20;">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span id="radioIcon" style="font-size: 18px;">📻</span>
+                <div style="display: flex; flex-direction: column;">
+                    <span style="font-size: 10px; color: var(--text-dim); font-weight: 700;">RADIO NANTES</span>
+                    <span id="stationName" style="font-size: 11px; font-weight: 700; color: var(--neon-blue);">Cyber Synthwave</span>
+                </div>
+            </div>
+            <button id="btnToggleRadio" class="action-btn" style="padding: 4px 8px; font-size: 10px;">► PLAY</button>
         </div>
 
         <!-- Police Suspicion Gauge HUD -->
@@ -690,6 +788,10 @@
                 </div>
                 <div class="driver-rating">⭐ <span id="driverRating">5.0</span></div>
             </div>
+            <!-- GTA Style Circular Mini-Radar Canvas -->
+            <div style="display: flex; justify-content: center; margin: 4px 0;">
+                <canvas id="radarCanvas" width="90" height="90" style="background: rgba(4, 6, 12, 0.85); border-radius: 50%; border: 1px solid var(--glass-border); box-shadow: 0 0 10px rgba(0, 255, 136, 0.2);"></canvas>
+            </div>
             <div id="activeOrdersList" style="display: flex; flex-direction: column; gap: 8px;">
                 <!-- Active WeedDash delivery orders rendered dynamically -->
             </div>
@@ -699,6 +801,26 @@
         <div id="location-tag" class="glass-panel">
             <div class="pulse-dot"></div>
             <span>PLACE DE BRETAGNE, NANTES</span>
+        </div>
+
+        <!-- VIP QTE Negotiation Modal -->
+        <div id="modalQTE" class="modal-overlay">
+            <div class="glass-panel modal-content" style="width: 380px; text-align: center;">
+                <div class="modal-header">
+                    <h2>💎 NÉGOCIATION CLIENT VIP</h2>
+                </div>
+                <div style="padding: 16px 0; display: flex; flex-direction: column; gap: 12px; align-items: center;">
+                    <div id="vipClientName" style="font-weight: 700; font-size: 16px; color: var(--neon-gold);">DJ Club Nantes</div>
+                    <div style="font-size: 12px; color: var(--text-dim);">Stopper l'aiguille dans la zone dorée !</div>
+                    <div style="width: 100%; height: 24px; background: rgba(255,255,255,0.1); border-radius: 12px; position: relative; overflow: hidden; border: 1px solid var(--glass-border);">
+                        <div style="position: absolute; left: 40%; width: 20%; height: 100%; background: var(--neon-gold); opacity: 0.6;"></div>
+                        <div id="qteNeedle" style="position: absolute; left: 0%; width: 4px; height: 100%; background: var(--neon-green); box-shadow: 0 0 10px var(--neon-green);"></div>
+                    </div>
+                    <button id="btnStopQTE" class="action-btn" style="padding: 10px 24px; justify-content: center; background: var(--neon-green); color: #000; font-weight: 700; margin-top: 8px;">
+                        VALIDER LA NÉGOCIATION (ESPACE)
+                    </button>
+                </div>
+            </div>
         </div>
 
         <!-- Bottom Controls Hint -->
@@ -750,6 +872,42 @@
                 </button>
             </div>
         </div>
+
+        <!-- Garage Vehicle Modal -->
+        <div id="modalGarage" class="modal-overlay">
+            <div class="glass-panel modal-content" style="width: 520px;">
+                <div class="modal-header">
+                    <h2>🛴 Garage d'Upgrades & Transports</h2>
+                    <button id="btnCloseGarage" class="close-btn">&times;</button>
+                </div>
+                <div class="garage-grid">
+                    <div class="garage-card" id="cardFeet">
+                        <span style="font-size: 28px;">👟</span>
+                        <div style="font-weight: 700; font-size: 15px;">À Pieds</div>
+                        <div style="font-size: 11px; color: var(--text-dim);">Vitesse: 1.0x | Capacité: 10</div>
+                        <button onclick="selectVehicle('feet')" class="action-btn" style="padding: 6px 12px; font-size: 12px; margin-top: 4px;">GRATUIT</button>
+                    </div>
+                    <div class="garage-card" id="cardTrottinette">
+                        <span style="font-size: 28px;">🛴</span>
+                        <div style="font-weight: 700; font-size: 15px;">Trottinette Électrique</div>
+                        <div style="font-size: 11px; color: var(--text-dim);">Vitesse: 1.6x | Capacité: 15</div>
+                        <button onclick="selectVehicle('trottinette')" class="action-btn" style="padding: 6px 12px; font-size: 12px; margin-top: 4px; border-color: var(--neon-gold); color: var(--neon-gold);">150 €</button>
+                    </div>
+                    <div class="garage-card" id="cardScooter">
+                        <span style="font-size: 28px;">🛵</span>
+                        <div style="font-weight: 700; font-size: 15px;">Scooter 50cc</div>
+                        <div style="font-size: 11px; color: var(--text-dim);">Vitesse: 2.2x | Capacité: 25</div>
+                        <button onclick="selectVehicle('scooter')" class="action-btn" style="padding: 6px 12px; font-size: 12px; margin-top: 4px; border-color: var(--neon-gold); color: var(--neon-gold);">400 €</button>
+                    </div>
+                    <div class="garage-card" id="cardDrone">
+                        <span style="font-size: 28px;">🛸</span>
+                        <div style="font-weight: 700; font-size: 15px;">Delivery Drone</div>
+                        <div style="font-size: 11px; color: var(--text-dim);">Vitesse: 3.0x | Vol Volant | Capacité: 40</div>
+                        <button onclick="selectVehicle('drone')" class="action-btn" style="padding: 6px 12px; font-size: 12px; margin-top: 4px; border-color: var(--neon-pink); color: var(--neon-pink);">1000 €</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- MAIN GAME LOGIC (VANILLA JS) -->
@@ -792,11 +950,12 @@
                     osc.stop(now + 0.05);
                 } catch (e) {}
             },
-            onTransactionSuccess() {
+            onTransactionSuccess(comboLevel = 1) {
                 if (!this.ctx) return;
                 try {
                     const now = this.ctx.currentTime;
-                    // Dual tone chime (Coin sound)
+                    const pitchMultiplier = 1.0 + (comboLevel - 1) * 0.12;
+                    // Dual tone chime (Coin sound with pitch scale)
                     [523.25, 659.25, 783.99].forEach((freq, idx) => {
                         const osc = this.ctx.createOscillator();
                         const gain = this.ctx.createGain();
@@ -804,7 +963,7 @@
                         gain.connect(this.ctx.destination);
 
                         osc.type = 'triangle';
-                        osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+                        osc.frequency.setValueAtTime(freq * pitchMultiplier, now + idx * 0.06);
 
                         gain.gain.setValueAtTime(0.15, now + idx * 0.06);
                         gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.12);
@@ -893,7 +1052,7 @@
             hoveredNPC: null
         };
 
-        // Player State
+        // Player State & Vehicle Upgrades
         const player = {
             col: 15,
             row: 15,
@@ -910,6 +1069,13 @@
             xpToNext: 100,
             level: 1,
             reputation: 1,
+            vehicle: 'feet', // 'feet' | 'trottinette' | 'scooter' | 'drone'
+            stamina: 100,
+            maxStamina: 100,
+            isDashing: false,
+            isStealth: false,
+            stealthState: 'VISIBLE', // 'VISIBLE' | 'IN_SHADOW' | 'HIDDEN'
+            stunned: 0,
             colors: {
                 jacket: '#00ff88',
                 pants: '#1a202c',
@@ -918,7 +1084,168 @@
             }
         };
 
-        /* Particle System for Game Feel */
+        // Nantes Underworld Expansion State
+        let safehouses = { kiosque: false, hub: false };
+        let slowMoTimer = 0;
+
+        // Tramway Line 3 State
+        const tramcar = {
+            col: 14.5,
+            row: 0.0,
+            speed: 0.12,
+            direction: 1,
+            isStopped: false,
+            stopTimer: 0
+        };
+
+        // VIP Client State
+        let vipClient = null;
+        let qteActive = false;
+        let qteNeedlePos = 0;
+        let qteDirection = 1.8;
+
+        // Radio Synth State
+        const RadioSynth = {
+            playing: false,
+            station: 'Cyber Synthwave',
+            intervalId: null,
+            beat: 0,
+            init() {
+                this.toggle();
+            },
+            toggle() {
+                this.playing = !this.playing;
+                const btn = document.getElementById('btnToggleRadio');
+                if (btn) btn.textContent = this.playing ? '❚❚ PAUSE' : '► PLAY';
+                if (this.playing) this.startBeat();
+                else this.stopBeat();
+            },
+            startBeat() {
+                if (this.intervalId) clearInterval(this.intervalId);
+                this.intervalId = setInterval(() => {
+                    if (!AudioEngine.ctx || !this.playing) return;
+                    try {
+                        const now = AudioEngine.ctx.currentTime;
+                        const osc = AudioEngine.ctx.createOscillator();
+                        const gain = AudioEngine.ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(AudioEngine.ctx.destination);
+
+                        const freqs = combo >= 3 ? [110, 164, 220, 330] : [98, 130, 196, 261];
+                        const freq = freqs[this.beat % freqs.length];
+
+                        osc.type = player.isDashing ? 'sawtooth' : 'sine';
+                        osc.frequency.setValueAtTime(freq, now);
+
+                        gain.gain.setValueAtTime(player.isDashing ? 0.08 : 0.04, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.18);
+
+                        osc.start(now);
+                        osc.stop(now + 0.18);
+                        this.beat++;
+                    } catch(e) {}
+                }, combo >= 3 ? 180 : 220);
+            },
+            stopBeat() {
+                if (this.intervalId) clearInterval(this.intervalId);
+            }
+        };
+
+        // Gameplay Juice Engine State
+        let combo = 1;
+        let comboTimer = 0;
+        let shakeTime = 0;
+        let shakeIntensity = 0;
+        let timeOfDay = 0.2; // 0.0 Day, 0.4 Sunset, 0.7 Night
+        const ghostTrails = [];
+
+        function getVehicleSpeed() {
+            if (player.vehicle === 'trottinette') return 0.13;
+            if (player.vehicle === 'scooter') return 0.18;
+            if (player.vehicle === 'drone') return 0.25;
+            return 0.08; // feet
+        }
+
+        function triggerDash() {
+            if (player.stamina < 25 || player.isDashing) return;
+            AudioEngine.init();
+            player.stamina -= 25;
+            player.isDashing = true;
+            shakeTime = 8;
+            shakeIntensity = 6;
+            AudioEngine.onStep('tram_track');
+
+            const baseSpd = getVehicleSpeed();
+            player.speed = baseSpd * 2.5;
+
+            // Ghost Trail Effect
+            for (let i = 0; i < 4; i++) {
+                ghostTrails.push({
+                    col: player.subCol,
+                    row: player.subRow,
+                    alpha: 0.7
+                });
+            }
+
+            setTimeout(() => {
+                player.speed = getVehicleSpeed();
+                player.isDashing = false;
+            }, 400);
+        }
+
+        function selectVehicle(type) {
+            AudioEngine.init();
+            const prices = { feet: 0, trottinette: 150, scooter: 400, drone: 1000 };
+            const price = prices[type];
+
+            if (player.vehicle === type) {
+                showNotification("ℹ️ Véhicule déjà sélectionné !");
+                return;
+            }
+
+            if (player.cash >= price || type === 'feet') {
+                if (type !== 'feet' && player.vehicle !== type) {
+                    player.cash -= price;
+                }
+                player.vehicle = type;
+                player.speed = getVehicleSpeed();
+                AudioEngine.onLevelUp();
+                showNotification(`🎉 Nouveau véhicule équipé : ${type.toUpperCase()} !`);
+                closeGarageModal();
+                updateHUD();
+            } else {
+                showNotification(`❌ Fonds insuffisants (${price}€ requis) !`);
+            }
+        }
+
+        // Micro Juice & Polish State
+        let hitStopTimer = 0;
+        const emotes = [];
+        const mouseTrail = [];
+
+        // Pigeons Array on Plaza Ground
+        const pigeons = [];
+        for (let i = 0; i < 8; i++) {
+            pigeons.push({
+                col: 8 + Math.floor(Math.random() * 14),
+                row: 8 + Math.floor(Math.random() * 14),
+                isScared: false,
+                flyY: 0,
+                alpha: 1.0
+            });
+        }
+
+        function spawnEmote(text, screenX, screenY) {
+            emotes.push({
+                text: text,
+                x: screenX,
+                y: screenY,
+                vy: -1.2,
+                alpha: 1.0
+            });
+        }
+
+        /* Particle System & Physics Floating Text for Game Feel */
         const particles = [];
         const floatTexts = [];
         const clickRipples = [];
@@ -939,14 +1266,16 @@
             });
         }
 
-        function spawnFloatingText(text, screenX, screenY, color = '#ffd700') {
+        function spawnFloatingText(text, screenX, screenY, color = '#ffd700', usePhysics = true) {
             floatTexts.push({
                 text: text,
                 x: screenX,
                 y: screenY,
+                vx: usePhysics ? (Math.random() - 0.5) * 3 : 0,
+                vy: usePhysics ? -4.5 : -1.5,
+                gravity: usePhysics ? 0.25 : 0,
                 alpha: 1.0,
-                color: color,
-                vy: -1.5
+                color: color
             });
         }
 
@@ -965,6 +1294,62 @@
                     life: 0.03 + Math.random() * 0.03
                 });
             }
+        }
+
+        /* GTA Style Circular Mini-Radar Renderer */
+        function renderRadar() {
+            const radarCanvas = document.getElementById('radarCanvas');
+            if (!radarCanvas) return;
+            const rCtx = radarCanvas.getContext('2d');
+            const rw = radarCanvas.width;
+            const rh = radarCanvas.height;
+            const cx = rw / 2;
+            const cy = rh / 2;
+
+            rCtx.clearRect(0, 0, rw, rh);
+
+            // Radar Ring Grid
+            rCtx.strokeStyle = 'rgba(0, 255, 136, 0.25)';
+            rCtx.lineWidth = 1;
+            rCtx.beginPath();
+            rCtx.arc(cx, cy, cx - 4, 0, Math.PI * 2);
+            rCtx.arc(cx, cy, cx / 2, 0, Math.PI * 2);
+            rCtx.stroke();
+
+            // Center Player Dot (Cyan)
+            rCtx.fillStyle = '#00d8ff';
+            rCtx.shadowColor = '#00d8ff';
+            rCtx.shadowBlur = 6;
+            rCtx.beginPath();
+            rCtx.arc(cx, cy, 3.5, 0, Math.PI * 2);
+            rCtx.fill();
+            rCtx.shadowBlur = 0;
+
+            // Customer / Delivery Target Dot (Green / Gold)
+            if (currentOrder) {
+                const tCol = currentOrder.state === 'PICKUP' ? currentOrder.pickupCol : currentOrder.customerCol;
+                const tRow = currentOrder.state === 'PICKUP' ? currentOrder.pickupRow : currentOrder.customerRow;
+                const dx = (tCol - player.subCol) * 2.2;
+                const dy = (tRow - player.subRow) * 2.2;
+                if (Math.hypot(dx, dy) < cx - 6) {
+                    rCtx.fillStyle = currentOrder.state === 'PICKUP' ? '#00ff88' : '#ffd700';
+                    rCtx.beginPath();
+                    rCtx.arc(cx + dx, cy + dy, 4, 0, Math.PI * 2);
+                    rCtx.fill();
+                }
+            }
+
+            // Cop Patrol Dots (Blinking Red)
+            cops.forEach(cop => {
+                const dx = (cop.subCol - player.subCol) * 2.2;
+                const dy = (cop.subRow - player.subRow) * 2.2;
+                if (Math.hypot(dx, dy) < cx - 6) {
+                    rCtx.fillStyle = Math.sin(animTime * 10) > 0 ? '#ff0055' : '#990033';
+                    rCtx.beginPath();
+                    rCtx.arc(cx + dx, cy + dy, 3.5, 0, Math.PI * 2);
+                    rCtx.fill();
+                }
+            });
         }
 
         /* ==========================================================================
@@ -1201,30 +1586,212 @@
         }
         for (let i = 0; i < 2; i++) spawnCop();
 
+        /* Stealth Hiding Detection System */
+        function updateStealth() {
+            const badgeLabel = document.getElementById('stealthLabel');
+            const badgeIcon = document.getElementById('stealthEyeIcon');
+
+            // Tree Belt Hiding Spot (Row >= 25)
+            if (player.row >= 25) {
+                player.isStealth = true;
+                player.stealthState = 'HIDDEN';
+                if (badgeLabel) {
+                    badgeLabel.textContent = 'MASQUÉ (ARBRES)';
+                    badgeLabel.style.color = 'var(--neon-blue)';
+                }
+                if (badgeIcon) badgeIcon.textContent = '🙈';
+            }
+            // Glass Kiosque Hiding Spot (Col 5..6, Row 22..23)
+            else if ((player.col === 5 || player.col === 6) && (player.row === 22 || player.row === 23)) {
+                player.isStealth = true;
+                player.stealthState = 'IN_SHADOW';
+                if (badgeLabel) {
+                    badgeLabel.textContent = 'PÉNOMBRE (KIOSQUE)';
+                    badgeLabel.style.color = 'var(--neon-gold)';
+                }
+                if (badgeIcon) badgeIcon.textContent = '🌘';
+            }
+            else {
+                player.isStealth = false;
+                player.stealthState = 'VISIBLE';
+                if (badgeLabel) {
+                    badgeLabel.textContent = 'VISIBLE';
+                    badgeLabel.style.color = 'var(--neon-green)';
+                }
+                if (badgeIcon) badgeIcon.textContent = '👁️';
+            }
+        }
+
+        /* Tramway Line 3 Movement & Fast Travel */
+        function updateTramway() {
+            if (tramcar.isStopped) {
+                tramcar.stopTimer--;
+                if (tramcar.stopTimer <= 0) {
+                    tramcar.isStopped = false;
+                    tramcar.direction *= -1; // Reverse route
+                    AudioEngine.onRestock();
+                }
+                return;
+            }
+
+            tramcar.row += tramcar.direction * tramcar.speed;
+
+            // Check Station Bretagne Stop at Center (Row 14)
+            if (Math.abs(tramcar.row - 14.0) < 0.15 && Math.random() < 0.05) {
+                tramcar.isStopped = true;
+                tramcar.stopTimer = 360; // 6 seconds stop
+                AudioEngine.onRestock();
+                showNotification("🚊 TRAMWAY LIGNE 3 : Arrêt à la Station Bretagne ! (Embarquez pour fuir la police)");
+            }
+
+            if (tramcar.row < 0) {
+                tramcar.row = 0;
+                tramcar.direction = 1;
+            } else if (tramcar.row > 29) {
+                tramcar.row = 29;
+                tramcar.direction = -1;
+            }
+
+            // Check Player Tram Collision / Fast Travel Boarding
+            const distTram = Math.hypot(player.subCol - tramcar.col, player.subRow - tramcar.row);
+            if (distTram < 1.2) {
+                if (tramcar.isStopped) {
+                    // Fast Travel & Police Reset
+                    player.col = tramcar.direction > 0 ? 27 : 2;
+                    player.subCol = player.col;
+                    player.row = 14;
+                    player.subRow = 14;
+                    suspicion = 0;
+                    const suspicionHud = document.getElementById('suspicion-hud');
+                    if (suspicionHud) suspicionHud.classList.remove('active');
+                    AudioEngine.onLevelUp();
+                    showNotification("🚊 FAST TRAVEL TRAMWAY ! Évasion réussie de la police !");
+                } else if (player.stunned <= 0) {
+                    // Tram Knockdown Danger
+                    player.stunned = 120; // 2s Stun
+                    shakeTime = 12;
+                    shakeIntensity = 10;
+                    AudioEngine.onStep('tram_track');
+                    showNotification("💥 PERCUTÉ PAR LE TRAMWAY ! Joueur étourdi 2s !");
+                }
+            }
+        }
+
+        /* VIP Client Spawner & QTE Negotiation */
+        function spawnVIPClient() {
+            if (vipClient !== null) return;
+            vipClient = {
+                col: 10 + Math.floor(Math.random() * 10),
+                row: 10 + Math.floor(Math.random() * 10),
+                name: '👑 DJ Club Nantes (VIP)',
+                timeLeft: 30
+            };
+            showNotification("💎 CLIENT VIP APPARU SUR LA PLACE ! Négociez un pourboire massif !");
+        }
+
+        setInterval(spawnVIPClient, 25000);
+
+        function updateQTE() {
+            if (!qteActive) return;
+            qteNeedlePos += qteDirection;
+            if (qteNeedlePos > 100 || qteNeedlePos < 0) {
+                qteDirection *= -1;
+            }
+            const needleEl = document.getElementById('qteNeedle');
+            if (needleEl) needleEl.style.left = `${qteNeedlePos}%`;
+        }
+
+        function triggerQTEStop() {
+            if (!qteActive) return;
+            qteActive = false;
+            const modalQTE = document.getElementById('modalQTE');
+            if (modalQTE) modalQTE.classList.remove('active');
+
+            if (qteNeedlePos >= 38 && qteNeedlePos <= 62) {
+                // PERFECT NEGOTIATION
+                player.cash += 250;
+                player.xp += 100;
+                combo = 5;
+                comboTimer = 20;
+                slowMoTimer = 30; // 0.5s slow-motion
+                shakeTime = 8;
+                shakeIntensity = 8;
+                AudioEngine.onLevelUp();
+
+                const pPos = gridToScreen(player.subCol, player.subRow, 0);
+                spawnFloatingText("💎 PERFECT NEGOTIATION! +250€ COMBO x5!", pPos.x, pPos.y - 40, '#ffd700');
+                spawnParticles(pPos.x, pPos.y, 45, '#ffd700');
+                showNotification("🎉 NÉGOCIATION PARFAITE ! Pourboire VIP de 250€ & Combo x5 !");
+            } else {
+                // NORMAL NEGOTIATION
+                player.cash += 120;
+                player.xp += 50;
+                AudioEngine.onTransactionSuccess();
+                showNotification("✅ Négociation VIP réussie (+120€) !");
+            }
+            vipClient = null;
+            updateHUD();
+        }
+
+        /* Safehouse Purchase Mechanic */
+        function buySafehouse() {
+            AudioEngine.init();
+            if (player.cash >= 500 && !safehouses.kiosque) {
+                player.cash -= 500;
+                safehouses.kiosque = true;
+                // Change Kiosque roof color to glowing neon player jacket color
+                setPillar(5, 22, 2, 'glass_kiosque', { color: player.colors.jacket, edgeColor: '#00ff88', roofColor: player.colors.jacket, windows: false });
+                setPillar(6, 22, 2, 'glass_kiosque', { color: player.colors.jacket, edgeColor: '#00ff88', roofColor: player.colors.jacket, windows: false });
+                setPillar(5, 23, 2, 'glass_kiosque', { color: player.colors.jacket, edgeColor: '#00ff88', roofColor: player.colors.jacket, windows: false });
+                setPillar(6, 23, 2, 'glass_kiosque', { color: player.colors.jacket, edgeColor: '#00ff88', roofColor: player.colors.jacket, windows: false });
+                AudioEngine.onLevelUp();
+                showNotification("🏬 PLANQUE RACHETÉE ! Ravitaillement passif & Enseigne Néon débloqués !");
+                updateHUD();
+            } else if (safehouses.kiosque) {
+                showNotification("ℹ️ Vous possédez déjà cette Planque !");
+            } else {
+                showNotification("❌ Fonds insuffisants (500€ requis pour racheter la Planque) !");
+            }
+        }
+
+        // Passive Safehouse Stock Regen
+        setInterval(() => {
+            if (safehouses.kiosque) {
+                player.stock += 2;
+                updateHUD();
+            }
+        }, 12000);
+
         function updatePolice() {
             let playerSpotted = false;
+            updateStealth();
 
-            cops.forEach(cop => {
-                if (Math.random() < 0.02) {
-                    const nc = cop.col + Math.floor((Math.random() - 0.5) * 4);
-                    const nr = cop.row + Math.floor((Math.random() - 0.5) * 4);
-                    if (isTileWalkable(nc, nr)) {
-                        cop.col = nc;
-                        cop.row = nr;
-                        cop.subCol = nc;
-                        cop.subRow = nr;
+            // Police cannot spot player if hidden in trees/shadows
+            if (!player.isStealth) {
+                cops.forEach(cop => {
+                    if (Math.random() < 0.02) {
+                        const nc = cop.col + Math.floor((Math.random() - 0.5) * 4);
+                        const nr = cop.row + Math.floor((Math.random() - 0.5) * 4);
+                        if (isTileWalkable(nc, nr)) {
+                            cop.col = nc;
+                            cop.row = nr;
+                            cop.subCol = nc;
+                            cop.subRow = nr;
+                        }
                     }
-                }
 
-                const dist = Math.hypot(player.col - cop.col, player.row - cop.row);
-                if (dist < 4.5 && currentOrder && currentOrder.state === 'DELIVER') {
-                    playerSpotted = true;
-                }
-            });
+                    const dist = Math.hypot(player.col - cop.col, player.row - cop.row);
+                    if (dist < 4.5 && currentOrder && currentOrder.state === 'DELIVER') {
+                        playerSpotted = true;
+                    }
+                });
+            }
 
             const suspicionHud = document.getElementById('suspicion-hud');
             const suspicionFill = document.getElementById('suspicionBarFill');
             const suspicionText = document.getElementById('suspicionPercent');
+            const pursuitVignette = document.getElementById('hot-pursuit-vignette');
+            const gameContainer = document.getElementById('game-container');
 
             if (playerSpotted) {
                 suspicion = Math.min(100, suspicion + 1.2);
@@ -1234,12 +1801,25 @@
                 if (suspicion === 0) suspicionHud.classList.remove('active');
             }
 
+            if (pursuitVignette) {
+                if (suspicion > 40) pursuitVignette.classList.add('active');
+                else pursuitVignette.classList.remove('active');
+            }
+
+            // Chromatic Aberration Danger Filter at 85%+ Suspicion
+            if (gameContainer) {
+                if (suspicion >= 85) gameContainer.classList.add('danger-chromatic');
+                else gameContainer.classList.remove('danger-chromatic');
+            }
+
             suspicionFill.style.width = `${suspicion}%`;
             suspicionText.textContent = `${Math.floor(suspicion)}%`;
 
             if (suspicion >= 100) {
                 suspicion = 0;
                 suspicionHud.classList.remove('active');
+                if (pursuitVignette) pursuitVignette.classList.remove('active');
+                if (gameContainer) gameContainer.classList.remove('danger-chromatic');
                 player.cash = Math.floor(player.cash * 0.7);
                 player.stock = Math.max(0, player.stock - 3);
                 if (currentOrder) currentOrder = null;
@@ -1251,6 +1831,18 @@
         }
 
         function drawCopSprite(x, y, cop) {
+            // Translucent Police Vision Cone with Scanning Oscillations
+            ctx.save();
+            const sweepAngle = Math.sin(animTime * 5 + (cop.col + cop.row)) * 0.35;
+            ctx.fillStyle = suspicion > 20 ? 'rgba(255, 0, 85, 0.28)' : 'rgba(0, 255, 136, 0.16)';
+            ctx.beginPath();
+            ctx.moveTo(x, y);
+            ctx.arc(x, y, 52, Math.PI * (0.25 + sweepAngle), Math.PI * (0.75 + sweepAngle));
+            ctx.closePath();
+            ctx.fill();
+            ctx.restore();
+
+            // Ground Shadow
             ctx.beginPath();
             ctx.ellipse(x, y + 4, 12, 6, 0, 0, Math.PI * 2);
             ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
@@ -1580,10 +2172,26 @@
             return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (B < 255 ? B < 1 ? 0 : B : 255) * 0x100 + (G < 255 ? G < 1 ? 0 : G : 255)).toString(16).slice(1);
         }
 
-        /* Draw Isometric Player Sprite */
+        /* Draw Isometric Player Sprite with Vehicles & Stamina Bar */
         function drawPlayerSprite(x, y, colors) {
             const pBounceY = Math.sin(animTime * (player.moving ? 14 : 4)) * (player.moving ? 3.5 : 1.2);
             const shadowRadiusX = 14 + Math.sin(animTime * (player.moving ? 14 : 4)) * 2;
+
+            // Ghost Trail Effect for Dash
+            ghostTrails.forEach((gt, idx) => {
+                const gPos = gridToScreen(gt.col, gt.row, 0);
+                ctx.save();
+                ctx.globalAlpha = gt.alpha * 0.5;
+                ctx.fillStyle = 'rgba(0, 255, 136, 0.4)';
+                ctx.beginPath();
+                ctx.arc(gPos.x, gPos.y - 15, 10, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+                gt.alpha -= 0.05;
+            });
+            for (let i = ghostTrails.length - 1; i >= 0; i--) {
+                if (ghostTrails[i].alpha <= 0) ghostTrails.splice(i, 1);
+            }
 
             // Dynamic Squashing Shadow
             ctx.beginPath();
@@ -1592,8 +2200,76 @@
             ctx.fill();
 
             // Apply Bobbing Y Offset
-            const spriteY = y - pBounceY;
+            const spriteY = y - (player.vehicle === 'drone' ? 18 : pBounceY);
 
+            // 1. VEHICLE ATTACHMENT DRAWING
+            if (player.vehicle === 'trottinette') {
+                // Electric Scooter Deck & Wheels
+                ctx.fillStyle = '#0f172a';
+                ctx.fillRect(x - 12, y, 24, 4);
+                ctx.fillStyle = '#00ff88';
+                ctx.fillRect(x - 10, y + 1, 20, 2);
+                // Wheels
+                ctx.fillStyle = '#000';
+                ctx.fillRect(x - 12, y + 2, 4, 4);
+                ctx.fillRect(x + 8, y + 2, 4, 4);
+                // Handlebar Post
+                ctx.strokeStyle = '#94a3b8';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x + 6, y);
+                ctx.lineTo(x + 6, spriteY - 18);
+                ctx.stroke();
+
+                if (player.moving && Math.random() < 0.3) {
+                    spawnParticles(x - 10, y + 2, 2, '#00ff88');
+                }
+            } else if (player.vehicle === 'scooter') {
+                // Scooter 50cc Body Frame
+                ctx.fillStyle = '#dc2626';
+                ctx.beginPath();
+                ctx.roundRect(x - 14, y - 6, 28, 10, 4);
+                ctx.fill();
+                // Scooter Wheels
+                ctx.fillStyle = '#0a0a0d';
+                ctx.fillRect(x - 13, y + 2, 6, 6);
+                ctx.fillRect(x + 7, y + 2, 6, 6);
+                // Headlight Glow
+                ctx.fillStyle = '#ffffaa';
+                ctx.shadowColor = '#ffffaa';
+                ctx.shadowBlur = 8;
+                ctx.fillRect(x + 12, y - 4, 4, 4);
+                ctx.shadowBlur = 0;
+
+                if (player.moving && Math.random() < 0.4) {
+                    spawnParticles(x - 12, y + 2, 3, '#f59e0b');
+                }
+            } else if (player.vehicle === 'drone') {
+                // Delivery Drone Flying Quadcopter Rotors
+                ctx.strokeStyle = 'rgba(0, 216, 255, 0.8)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x - 18, spriteY - 45);
+                ctx.lineTo(x + 18, spriteY - 45);
+                ctx.moveTo(x, spriteY - 55);
+                ctx.lineTo(x, spriteY - 35);
+                ctx.stroke();
+
+                // 4 Glowing Cyan Spinning Rotors
+                ctx.fillStyle = '#00d8ff';
+                ctx.shadowColor = '#00d8ff';
+                ctx.shadowBlur = 10;
+                const rAngle = animTime * 20;
+                ctx.beginPath();
+                ctx.arc(x - 18 + Math.cos(rAngle) * 3, spriteY - 45, 5, 0, Math.PI * 2);
+                ctx.arc(x + 18 + Math.cos(rAngle) * 3, spriteY - 45, 5, 0, Math.PI * 2);
+                ctx.arc(x, spriteY - 55 + Math.sin(rAngle) * 3, 5, 0, Math.PI * 2);
+                ctx.arc(x, spriteY - 35 + Math.sin(rAngle) * 3, 5, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+
+            // 2. CHARACTER BODY
             // Legs / Pants
             ctx.fillStyle = colors.pants;
             ctx.fillRect(x - 6, spriteY - 14, 5, 12);
@@ -1628,6 +2304,15 @@
             ctx.shadowBlur = 10;
             ctx.fillRect(x - 4, spriteY - 24, 8, 8);
             ctx.shadowBlur = 0;
+
+            // 3. STAMINA BAR GAUGE (Overhead when depleted)
+            if (player.stamina < player.maxStamina) {
+                const sPct = player.stamina / player.maxStamina;
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+                ctx.fillRect(x - 16, spriteY - 48, 32, 5);
+                ctx.fillStyle = sPct > 0.3 ? varColor('--neon-green') : varColor('--neon-pink');
+                ctx.fillRect(x - 15, spriteY - 47, 30 * sPct, 3);
+            }
         }
 
         /* Draw NPC Sprite */
@@ -1694,6 +2379,13 @@
            8. MAIN RENDER LOOP & UNIFIED Y-SORT PIPELINE
            ========================================================================== */
         function render() {
+            // Micro Hit-Stop Impact Freeze Frame
+            if (hitStopTimer > 0) {
+                hitStopTimer--;
+                requestAnimationFrame(render);
+                return;
+            }
+
             animTime += 0.08;
 
             // 1. Update Canvas Dimensions & Camera Lerp
@@ -1720,7 +2412,17 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             ctx.save();
-            ctx.translate(Math.round(camera.x), Math.round(camera.y));
+            let camXOffset = Math.round(camera.x);
+            let camYOffset = Math.round(camera.y);
+
+            // Camera Screen Shake Effect
+            if (shakeTime > 0) {
+                shakeTime--;
+                camXOffset += (Math.random() - 0.5) * shakeIntensity;
+                camYOffset += (Math.random() - 0.5) * shakeIntensity;
+            }
+
+            ctx.translate(camXOffset, camYOffset);
 
             // 2. Build Unified Y-Sort Pipeline Render List
             const renderList = [];
@@ -1730,7 +2432,6 @@
                 for (let r = 0; r < GRID_SIZE; r++) {
                     const pos = gridToScreen(c, r, 0);
 
-                    // Skip ground tile render if out of viewport
                     if (pos.x + camera.x < -100 || pos.x + camera.x > canvas.width + 100 ||
                         pos.y + camera.y < -100 || pos.y + camera.y > canvas.height + 100) {
                         continue;
@@ -1748,14 +2449,12 @@
                             else if (tile.type === 'paved_road') tileColor = '#181b22';
                             else if (tile.type === 'plaza_pavement') tileColor = '#222836';
 
-                            // Hover highlight
                             if (c === mouse.worldCol && r === mouse.worldRow) {
                                 strokeColor = varColor('--neon-green');
                             }
 
                             drawTileDiamond(pos.x, pos.y, TILE_W, TILE_H, tileColor, strokeColor);
 
-                            // Draw Concentric Arc Engravings on Plaza Pavement
                             if (tile.type === 'plaza_pavement') {
                                 const arcRad = ((c * 7 + r * 11) % 18) + 8;
                                 ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
@@ -1765,15 +2464,12 @@
                                 ctx.stroke();
                             }
 
-                            // Draw Central Vertical Tram Rails & Sleepers
                             if (tile.type === 'tram_track') {
                                 ctx.strokeStyle = 'rgba(0, 216, 255, 0.5)';
                                 ctx.lineWidth = 1.5;
                                 ctx.beginPath();
-                                // Left rail
                                 ctx.moveTo(pos.x - 6, pos.y - 12);
                                 ctx.lineTo(pos.x - 6, pos.y + 12);
-                                // Right rail
                                 ctx.moveTo(pos.x + 6, pos.y - 12);
                                 ctx.lineTo(pos.x + 6, pos.y + 12);
                                 ctx.stroke();
@@ -1783,64 +2479,63 @@
                 }
             }
 
-            // B. 1x1 Volumetric Pillars (Buildings & Architecture)
+            // Plaza Pigeons Rendering
+            pigeons.forEach(p => {
+                const pigPos = gridToScreen(p.col, p.row, 0);
+                renderList.push({
+                    depth: (p.col + p.row) * 100 + 10,
+                    draw: () => {
+                        ctx.save();
+                        if (p.isScared) {
+                            p.flyY -= 3;
+                            p.alpha -= 0.03;
+                            if (p.alpha <= 0) p.alpha = 0;
+                            spawnParticles(pigPos.x, pigPos.y + p.flyY, 1, 'rgba(180,180,190,0.6)');
+                        }
+                        ctx.globalAlpha = Math.max(0, p.alpha);
+                        ctx.fillStyle = '#94a3b8';
+                        ctx.beginPath();
+                        ctx.arc(pigPos.x, pigPos.y - 4 + p.flyY, 3, 0, Math.PI * 2);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                });
+            });
+
+            // B. Volumetric Pillars, NPCs, Cars, Player
             for (let c = 0; c < GRID_SIZE; c++) {
                 for (let r = 0; r < GRID_SIZE; r++) {
                     const pillar = getPillar(c, r);
                     if (!pillar) continue;
 
-                    // X-Ray Occlusion Check against Player Position
                     const isBehindPillar = (c >= player.col && r >= player.row &&
                         c <= player.col + 3 && r <= player.row + 3);
 
                     for (let z = 0; z < pillar.height; z++) {
                         const pos = gridToScreen(c, r, z);
-                        const blockDepth = (c + r) * 100 + z * 10 + 20;
-
                         renderList.push({
-                            depth: blockDepth,
-                            draw: () => {
-                                drawPillarBlock(pos.x, pos.y, z, pillar, isBehindPillar);
-                            }
+                            depth: (c + r) * 100 + z * 10 + 20,
+                            draw: () => drawPillarBlock(pos.x, pos.y, z, pillar, isBehindPillar)
                         });
                     }
                 }
             }
 
-            // C. NPCs & Delivery Destinations
             npcs.forEach(npc => {
                 const pos = gridToScreen(npc.subCol, npc.subRow, 0);
-                renderList.push({
-                    depth: (npc.col + npc.row) * 100 + 40,
-                    draw: () => {
-                        drawNPCSprite(pos.x, pos.y, npc);
-                    }
-                });
+                renderList.push({ depth: (npc.col + npc.row) * 100 + 40, draw: () => drawNPCSprite(pos.x, pos.y, npc) });
             });
 
-            // Police Patrol Officers
             cops.forEach(cop => {
                 const pos = gridToScreen(cop.subCol, cop.subRow, 0);
-                renderList.push({
-                    depth: (cop.col + cop.row) * 100 + 45,
-                    draw: () => {
-                        drawCopSprite(pos.x, pos.y, cop);
-                    }
-                });
+                renderList.push({ depth: (cop.col + cop.row) * 100 + 45, draw: () => drawCopSprite(pos.x, pos.y, cop) });
             });
 
-            // Procedural Traffic Cars
             cars.forEach(car => {
                 const pos = gridToScreen(car.subCol, car.subRow, 0);
-                renderList.push({
-                    depth: (Math.floor(car.subCol) + Math.floor(car.subRow)) * 100 + 30,
-                    draw: () => {
-                        drawCarSprite(pos.x, pos.y, car);
-                    }
-                });
+                renderList.push({ depth: (Math.floor(car.subCol) + Math.floor(car.subRow)) * 100 + 30, draw: () => drawCarSprite(pos.x, pos.y, car) });
             });
 
-            // Active WeedDash Order Markers (Pickup & Delivery Beacons)
             if (currentOrder) {
                 if (currentOrder.state === 'PICKUP') {
                     const kPos = gridToScreen(currentOrder.pickupCol, currentOrder.pickupRow, 0);
@@ -1849,10 +2544,8 @@
                         draw: () => {
                             ctx.save();
                             const bounceY = Math.sin(animTime * 6) * 5;
-                            // Vertical Beam Light
                             ctx.fillStyle = 'rgba(0, 255, 136, 0.15)';
                             ctx.fillRect(kPos.x - 8, kPos.y - 120, 16, 120);
-
                             ctx.shadowColor = varColor('--neon-green');
                             ctx.shadowBlur = 14;
                             ctx.fillStyle = varColor('--neon-green');
@@ -1869,10 +2562,8 @@
                         draw: () => {
                             ctx.save();
                             const bounceY = Math.sin(animTime * 6) * 5;
-                            // Vertical Beam Light
                             ctx.fillStyle = 'rgba(255, 215, 0, 0.18)';
                             ctx.fillRect(cPos.x - 10, cPos.y - 130, 20, 130);
-
                             ctx.shadowColor = varColor('--neon-gold');
                             ctx.shadowBlur = 14;
                             ctx.fillStyle = varColor('--neon-gold');
@@ -1885,136 +2576,63 @@
                 }
             }
 
-            // D. Player Entity
-            const playerPos = gridToScreen(player.subCol, player.subRow, 0);
-            renderList.push({
-                depth: (player.col + player.row) * 100 + 50,
-                draw: () => {
-                    drawPlayerSprite(playerPos.x, playerPos.y, player.colors);
-                }
-            });
+            renderList.push({ depth: (player.col + player.row) * 100 + 50, draw: () => drawPlayerSprite(playerPos.x, playerPos.y, player.colors) });
 
-            // 3. Execute Sorted Render Pipeline (Back to Front)
             renderList.sort((a, b) => a.depth - b.depth);
             renderList.forEach(item => item.draw());
 
-            // 4. Render Click Target Target Ripples
-            for (let i = clickRipples.length - 1; i >= 0; i--) {
-                const rip = clickRipples[i];
-                rip.radius += 1.4;
-                rip.alpha -= 0.035;
-                if (rip.alpha <= 0) {
-                    clickRipples.splice(i, 1);
-                    continue;
-                }
+            // PNJ Emote Speech Bubbles
+            for (let i = emotes.length - 1; i >= 0; i--) {
+                const em = emotes[i];
+                em.y += em.vy;
+                em.alpha -= 0.025;
+                if (em.alpha <= 0) { emotes.splice(i, 1); continue; }
                 ctx.save();
-                ctx.globalAlpha = rip.alpha;
-                ctx.strokeStyle = varColor('--neon-green');
-                ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.ellipse(rip.x, rip.y, rip.radius * 2, rip.radius, 0, 0, Math.PI * 2);
-                ctx.stroke();
+                ctx.globalAlpha = em.alpha;
+                ctx.font = '22px var(--font-main)';
+                ctx.fillText(em.text, em.x, em.y);
                 ctx.restore();
             }
 
-            // 5. Render Particle Systems & Floating Texts
-            for (let i = particles.length - 1; i >= 0; i--) {
-                const p = particles[i];
-                p.x += p.vx;
-                p.y += p.vy;
-                p.alpha -= p.life;
-                if (p.alpha <= 0) {
-                    particles.splice(i, 1);
-                    continue;
-                }
-                ctx.globalAlpha = p.alpha;
-                ctx.fillStyle = p.color;
-                ctx.beginPath();
-                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-                ctx.fill();
-                ctx.globalAlpha = 1.0;
-            }
-
+            // 2D Physics Floating Numbers (+$75!)
             for (let i = floatTexts.length - 1; i >= 0; i--) {
                 const ft = floatTexts[i];
+                ft.x += ft.vx;
+                ft.vy += ft.gravity;
                 ft.y += ft.vy;
                 ft.alpha -= 0.02;
-                if (ft.alpha <= 0) {
-                    floatTexts.splice(i, 1);
-                    continue;
-                }
+                if (ft.alpha <= 0) { floatTexts.splice(i, 1); continue; }
+                ctx.save();
                 ctx.globalAlpha = ft.alpha;
-                ctx.font = '700 16px var(--font-tech)';
+                ctx.font = '700 18px var(--font-tech)';
                 ctx.fillStyle = ft.color;
+                ctx.shadowColor = ft.color;
+                ctx.shadowBlur = 8;
                 ctx.textAlign = 'center';
                 ctx.fillText(ft.text, ft.x, ft.y);
-                ctx.globalAlpha = 1.0;
+                ctx.restore();
             }
 
             ctx.restore();
 
-            // 6. Render Ambient Floating Dust Motes (Screen Space)
-            ambientDust.forEach(d => {
-                d.x += d.vx;
-                d.y += d.vy;
-                d.alpha += Math.sin(Date.now() * 0.002) * 0.005;
-                if (d.y < -10) d.y = canvas.height + 10;
-                if (d.x < -10) d.x = canvas.width + 10;
-                if (d.x > canvas.width + 10) d.x = -10;
-
-                ctx.fillStyle = d.color + Math.max(0.1, Math.min(0.7, d.alpha)) + ')';
+            // Screen Space Custom Mouse Trail
+            for (let i = mouseTrail.length - 1; i >= 0; i--) {
+                const mt = mouseTrail[i];
+                mt.alpha -= 0.08;
+                if (mt.alpha <= 0) { mouseTrail.splice(i, 1); continue; }
+                ctx.save();
+                ctx.globalAlpha = mt.alpha;
+                ctx.fillStyle = varColor('--neon-green');
                 ctx.beginPath();
-                ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+                ctx.arc(mt.x, mt.y, 2.5, 0, Math.PI * 2);
                 ctx.fill();
-            });
-
-            // Request Next Frame
-            requestAnimationFrame(render);
-        }
-
-        /* ==========================================================================
-           9. GAMEPLAY LOGIC & MOVEMENT UPDATES
-           ========================================================================== */
-        function updateGameLogic() {
-            updateTraffic();
-            updatePolice();
-
-            // Player Movement Along Path
-            if (player.path.length > 0) {
-                const targetNode = player.path[0];
-                const dx = targetNode.col - player.subCol;
-                const dy = targetNode.row - player.subRow;
-                const dist = Math.hypot(dx, dy);
-
-                if (dist < player.speed) {
-                    player.subCol = targetNode.col;
-                    player.subRow = targetNode.row;
-                    player.col = targetNode.col;
-                    player.row = targetNode.row;
-                    player.path.shift();
-
-                    // Check WeedDash delivery completion at player step
-                    checkWeedDashDelivery();
-
-                    // Step sound effect per ground type
-                    const currentTile = map[player.col][player.row];
-                    AudioEngine.onStep(currentTile ? currentTile.type : 'cobblestone');
-
-                    // Step particle
-                    const pPos = gridToScreen(player.subCol, player.subRow, 0);
-                    spawnParticles(pPos.x, pPos.y, 3, 'rgba(255,255,255,0.3)');
-
-                    if (player.path.length === 0) {
-                        player.moving = false;
-                    }
-                } else {
-                    player.subCol += (dx / dist) * player.speed;
-                    player.subRow += (dy / dist) * player.speed;
-                    player.col = Math.round(player.subCol);
-                    player.row = Math.round(player.subRow);
-                    player.moving = true;
-                }
+                ctx.restore();
             }
+
+            // Render GTA Style Circular Mini-Radar
+            renderRadar();
+
+            requestAnimationFrame(render);
         }
 
         function checkWeedDashDelivery() {
@@ -2042,22 +2660,125 @@
                 const distCust = Math.hypot(player.col - currentOrder.customerCol, player.row - currentOrder.customerRow);
                 if (distCust <= 1.8) {
                     player.stock = Math.max(0, player.stock - 1);
-                    player.cash += currentOrder.rewardCash;
-                    player.xp += currentOrder.rewardXP;
+
+                    // Combo Multiplier System
+                    if (comboTimer > 0) {
+                        combo = Math.min(5, combo + 1);
+                    } else {
+                        combo = 1;
+                    }
+                    comboTimer = 20; // 20s window
+
+                    const rewardCash = currentOrder.rewardCash * combo;
+                    const rewardXP = currentOrder.rewardXP * combo;
+
+                    player.cash += rewardCash;
+                    player.xp += rewardXP;
                     player.reputation++;
                     driverRating = Math.min(5.0, parseFloat((driverRating + 0.1).toFixed(1)));
 
-                    AudioEngine.onTransactionSuccess();
+                    // Micro Hit-Stop Impact & Audio Pitch Scaling with Combo
+                    hitStopTimer = 2; // 15ms Micro Freeze Frame
+                    AudioEngine.onTransactionSuccess(combo);
+                    shakeTime = 6;
+                    shakeIntensity = 5;
 
                     const cPos = gridToScreen(currentOrder.customerCol, currentOrder.customerRow, 0);
-                    spawnFloatingText(`+$${currentOrder.rewardCash} ⭐5.0`, cPos.x, cPos.y - 30, '#ffd700');
-                    spawnParticles(cPos.x, cPos.y, 24, '#00ff88');
+                    const comboTag = combo > 1 ? ` (COMBO x${combo}!)` : '';
+                    spawnFloatingText(`+$${rewardCash}${comboTag} ⭐5.0!`, cPos.x, cPos.y - 30, '#ffd700', true);
+                    spawnParticles(cPos.x, cPos.y, 32, '#00ff88');
+                    spawnEmote(combo >= 3 ? '⚡' : '😍', cPos.x, cPos.y - 45);
 
-                    showNotification(`🎉 LIVRAISON RÉUSSIE : ${currentOrder.strain} (+${currentOrder.rewardCash}€) !`);
+                    showNotification(`🎉 LIVRAISON PERFECT : ${currentOrder.strain} (+${rewardCash}€ | COMBO x${combo}) !`);
                     currentOrder = null;
                     checkLevelUp();
                     updateHUD();
                     renderWeedDashWidget();
+                }
+            }
+        }
+
+        /* Game Loop Logic Update */
+        function updateGameLogic() {
+            // Player Stunned Lockout (Tram Knockdown)
+            if (player.stunned > 0) {
+                player.stunned--;
+                return;
+            }
+
+            updateTraffic();
+            updatePolice();
+            updateTramway();
+            updateQTE();
+
+            // VIP Client Proximity Check
+            if (vipClient && !qteActive) {
+                const distVIP = Math.hypot(player.col - vipClient.col, player.row - vipClient.row);
+                if (distVIP <= 1.8) {
+                    qteActive = true;
+                    const modalQTE = document.getElementById('modalQTE');
+                    const vipNameEl = document.getElementById('vipClientName');
+                    if (vipNameEl) vipNameEl.textContent = vipClient.name;
+                    if (modalQTE) modalQTE.classList.add('active');
+                }
+            }
+
+            // Stamina Recharge
+            if (player.stamina < player.maxStamina && !player.isDashing) {
+                player.stamina = Math.min(player.maxStamina, player.stamina + 0.45);
+            }
+
+            // Combo Decay
+            if (comboTimer > 0) {
+                comboTimer -= 1 / 60;
+                if (comboTimer <= 0) combo = 1;
+            }
+
+            // Pigeon Scare Proximity Check
+            pigeons.forEach(p => {
+                const distPig = Math.hypot(player.subCol - p.col, player.subRow - p.row);
+                if (distPig < 2.5 && player.moving) {
+                    p.isScared = true;
+                }
+            });
+
+            // Player Movement Along Path
+            if (player.path.length > 0) {
+                const targetNode = player.path[0];
+                const dx = targetNode.col - player.subCol;
+                const dy = targetNode.row - player.subRow;
+                const dist = Math.hypot(dx, dy);
+
+                if (dist < player.speed) {
+                    player.subCol = targetNode.col;
+                    player.subRow = targetNode.row;
+                    player.col = targetNode.col;
+                    player.row = targetNode.row;
+                    player.path.shift();
+
+                    checkWeedDashDelivery();
+
+                    const currentTile = map[player.col][player.row];
+                    AudioEngine.onStep(currentTile ? currentTile.type : 'cobblestone');
+
+                    // Surface-Reactive Step Particles
+                    let stepColor = 'rgba(180, 190, 200, 0.4)';
+                    if (currentTile) {
+                        if (currentTile.type === 'tram_track') stepColor = '#00d8ff';
+                        else if (currentTile.type === 'grass') stepColor = '#00ff88';
+                    }
+                    const pPos = gridToScreen(player.subCol, player.subRow, 0);
+                    spawnParticles(pPos.x, pPos.y, player.isDashing ? 6 : 2, stepColor);
+
+                    if (player.path.length === 0) {
+                        player.moving = false;
+                    }
+                } else {
+                    player.subCol += (dx / dist) * player.speed;
+                    player.subRow += (dy / dist) * player.speed;
+                    player.col = Math.round(player.subCol);
+                    player.row = Math.round(player.subRow);
+                    player.moving = true;
                 }
             }
         }
@@ -2145,6 +2866,11 @@
             mouse.x = e.clientX;
             mouse.y = e.clientY;
 
+            // Custom Mouse Trail Dot
+            if (Math.random() < 0.6) {
+                mouseTrail.push({ x: e.clientX, y: e.clientY, alpha: 0.7 });
+            }
+
             const grid = screenToGrid(mouse.x, mouse.y);
             mouse.worldCol = grid.col;
             mouse.worldRow = grid.row;
@@ -2214,6 +2940,66 @@
                 showNotification("❌ Fonds insuffisants (20€ nécessaires)");
             }
         });
+
+        /* Spacebar & QTE Key Listener */
+        window.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                e.preventDefault();
+                if (qteActive) {
+                    triggerQTEStop();
+                } else {
+                    triggerDash();
+                }
+            }
+        });
+
+        /* Radio Synth Player Listener */
+        const btnRadio = document.getElementById('btnToggleRadio');
+        if (btnRadio) {
+            btnRadio.addEventListener('click', () => {
+                AudioEngine.init();
+                RadioSynth.toggle();
+            });
+        }
+
+        /* Safehouse Buy Listener */
+        const btnSafehouse = document.getElementById('btnSafehouse');
+        if (btnSafehouse) {
+            btnSafehouse.addEventListener('click', buySafehouse);
+        }
+
+        /* VIP QTE Stop Button Listener */
+        const btnStopQTE = document.getElementById('btnStopQTE');
+        if (btnStopQTE) {
+            btnStopQTE.addEventListener('click', triggerQTEStop);
+        }
+
+        /* Garage Modal Controllers */
+        const modalGarage = document.getElementById('modalGarage');
+
+        function openGarageModal() {
+            AudioEngine.init();
+            if (modalGarage) modalGarage.classList.add('active');
+            updateGarageCardsUI();
+        }
+
+        function closeGarageModal() {
+            if (modalGarage) modalGarage.classList.remove('active');
+        }
+
+        function updateGarageCardsUI() {
+            ['Feet', 'Trottinette', 'Scooter', 'Drone'].forEach(v => {
+                const card = document.getElementById(`card${v}`);
+                if (card) {
+                    if (player.vehicle === v.toLowerCase()) card.classList.add('active');
+                    else card.classList.remove('active');
+                }
+            });
+        }
+
+        document.getElementById('btnDash').addEventListener('click', triggerDash);
+        document.getElementById('btnGarage').addEventListener('click', openGarageModal);
+        document.getElementById('btnCloseGarage').addEventListener('click', closeGarageModal);
 
         document.getElementById('btnCustomize').addEventListener('click', openCustomizationModal);
         document.getElementById('btnCloseModal').addEventListener('click', closeCustomizationModal);
