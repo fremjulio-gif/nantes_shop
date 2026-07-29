@@ -296,6 +296,137 @@
             animation: hudSlideRight 0.8s 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
         }
 
+        /* Police Suspicion Bar */
+        #suspicion-hud {
+            position: absolute;
+            top: 90px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 320px;
+            padding: 10px 18px;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+            border-color: rgba(255, 0, 85, 0.4);
+            box-shadow: 0 0 16px rgba(255, 0, 85, 0.2);
+        }
+
+        #suspicion-hud.active {
+            opacity: 1;
+        }
+
+        .suspicion-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            font-family: var(--font-tech);
+            font-weight: 700;
+            color: var(--neon-pink);
+            letter-spacing: 1px;
+        }
+
+        .suspicion-bar-bg {
+            width: 100%;
+            height: 10px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 5px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 0, 85, 0.5);
+        }
+
+        .suspicion-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--neon-gold), var(--neon-pink));
+            box-shadow: 0 0 10px var(--neon-pink);
+            transition: width 0.1s linear;
+        }
+
+        /* WeedDash Smartphone Widget Overlay */
+        #weeddash-widget {
+            position: absolute;
+            right: 20px;
+            bottom: 80px;
+            width: 290px;
+            padding: 16px;
+            z-index: 20;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            animation: hudSlideLeft 0.8s 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+            border-color: rgba(0, 255, 136, 0.4);
+        }
+
+        .weeddash-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 8px;
+        }
+
+        .weeddash-title {
+            font-family: var(--font-tech);
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--neon-green);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .driver-rating {
+            font-family: var(--font-tech);
+            font-size: 14px;
+            color: var(--neon-gold);
+            font-weight: 700;
+        }
+
+        .order-card {
+            background: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--glass-border);
+            border-radius: 10px;
+            padding: 10px 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            transition: all 0.3s ease;
+        }
+
+        .order-card.urgent {
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 12px rgba(255, 0, 85, 0.3);
+        }
+
+        .order-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .strain-name {
+            font-weight: 700;
+            font-size: 13px;
+            color: #fff;
+        }
+
+        .order-timer {
+            font-family: var(--font-tech);
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--neon-gold);
+        }
+
+        .order-payout {
+            font-size: 11px;
+            color: var(--neon-green);
+            font-weight: 600;
+        }
+
         .pulse-dot {
             width: 8px;
             height: 8px;
@@ -538,6 +669,30 @@
             <button id="btnCustomize" class="action-btn">
                 <span>🎨</span> Style du Joueur
             </button>
+        </div>
+
+        <!-- Police Suspicion Gauge HUD -->
+        <div id="suspicion-hud" class="glass-panel">
+            <div class="suspicion-header">
+                <span>🚨 CONTRÔLE POLICE - NIVEAU DE RECHERCHE</span>
+                <span id="suspicionPercent">0%</span>
+            </div>
+            <div class="suspicion-bar-bg">
+                <div id="suspicionBarFill" class="suspicion-bar-fill"></div>
+            </div>
+        </div>
+
+        <!-- WeedDash Smartphone Delivery Widget -->
+        <div id="weeddash-widget" class="glass-panel">
+            <div class="weeddash-header">
+                <div class="weeddash-title">
+                    <span>🌿</span> WeedDash Express
+                </div>
+                <div class="driver-rating">⭐ <span id="driverRating">5.0</span></div>
+            </div>
+            <div id="activeOrdersList" style="display: flex; flex-direction: column; gap: 8px;">
+                <!-- Active WeedDash delivery orders rendered dynamically -->
+            </div>
         </div>
 
         <!-- Location Tag -->
@@ -943,7 +1098,254 @@
         }
 
         /* ==========================================================================
-           5. NPC CUSTOMERS MANAGER & DEALS
+           5. TRAFFIC MANAGER (PROCEDURAL ISOMETRIC CARS)
+           ========================================================================== */
+        const cars = [];
+        const MAX_CARS = 5;
+
+        function spawnCar() {
+            if (cars.length >= MAX_CARS) return;
+            const routes = [
+                { startC: 0, startR: 1, dirC: 1, dirR: 0 },
+                { startC: 28, startR: 28, dirC: -1, dirR: 0 },
+                { startC: 1, startR: 28, dirC: 0, dirR: -1 },
+                { startC: 28, startR: 1, dirC: 0, dirR: 1 }
+            ];
+            const route = routes[Math.floor(Math.random() * routes.length)];
+            const colors = ['#ff0055', '#00d8ff', '#ffd700', '#ffffff', '#4a5568'];
+            cars.push({
+                subCol: route.startC,
+                subRow: route.startR,
+                dirCol: route.dirC,
+                dirRow: route.dirR,
+                speed: 0.08 + Math.random() * 0.04,
+                color: colors[Math.floor(Math.random() * colors.length)]
+            });
+        }
+
+        function updateTraffic() {
+            for (let i = cars.length - 1; i >= 0; i--) {
+                const c = cars[i];
+                c.subCol += c.dirCol * c.speed;
+                c.subRow += c.dirRow * c.speed;
+                if (c.subCol < -2 || c.subCol > GRID_SIZE + 2 || c.subRow < -2 || c.subRow > GRID_SIZE + 2) {
+                    cars.splice(i, 1);
+                }
+            }
+        }
+
+        setInterval(spawnCar, 3500);
+
+        function drawCarSprite(x, y, car) {
+            const h = 10;
+            // Car Body Base
+            ctx.fillStyle = car.color;
+            ctx.beginPath();
+            ctx.moveTo(x - 14, y);
+            ctx.lineTo(x, y + 7);
+            ctx.lineTo(x + 14, y);
+            ctx.lineTo(x, y - 7);
+            ctx.closePath();
+            ctx.fill();
+
+            // Car Roof Cabin
+            ctx.fillStyle = adjustBrightness(car.color, 25);
+            ctx.beginPath();
+            ctx.moveTo(x - 8, y - h);
+            ctx.lineTo(x, y + 4 - h);
+            ctx.lineTo(x + 8, y - h);
+            ctx.lineTo(x, y - 4 - h);
+            ctx.closePath();
+            ctx.fill();
+
+            // Windshield Glass Highlight
+            ctx.fillStyle = 'rgba(0, 216, 255, 0.7)';
+            ctx.fillRect(x - 4, y - h - 1, 8, 4);
+
+            // Headlights Glow
+            ctx.fillStyle = '#ffffaa';
+            ctx.shadowColor = '#ffffaa';
+            ctx.shadowBlur = 8;
+            ctx.fillRect(x + (car.dirCol >= 0 ? 8 : -10), y, 4, 3);
+            ctx.shadowBlur = 0;
+        }
+
+        /* ==========================================================================
+           6. POLICE SYSTEM (PATROULS & SUSPICION METER)
+           ========================================================================== */
+        const cops = [];
+        let suspicion = 0;
+
+        function spawnCop() {
+            if (cops.length >= 3) return;
+            cops.push({
+                col: 10 + Math.floor(Math.random() * 10),
+                row: 10 + Math.floor(Math.random() * 10),
+                subCol: 12.0,
+                subRow: 12.0
+            });
+        }
+        for (let i = 0; i < 2; i++) spawnCop();
+
+        function updatePolice() {
+            let playerSpotted = false;
+
+            cops.forEach(cop => {
+                if (Math.random() < 0.02) {
+                    const nc = cop.col + Math.floor((Math.random() - 0.5) * 4);
+                    const nr = cop.row + Math.floor((Math.random() - 0.5) * 4);
+                    if (isTileWalkable(nc, nr)) {
+                        cop.col = nc;
+                        cop.row = nr;
+                        cop.subCol = nc;
+                        cop.subRow = nr;
+                    }
+                }
+
+                const dist = Math.hypot(player.col - cop.col, player.row - cop.row);
+                if (dist < 4.5 && activeOrders.length > 0) {
+                    playerSpotted = true;
+                }
+            });
+
+            const suspicionHud = document.getElementById('suspicion-hud');
+            const suspicionFill = document.getElementById('suspicionBarFill');
+            const suspicionText = document.getElementById('suspicionPercent');
+
+            if (playerSpotted) {
+                suspicion = Math.min(100, suspicion + 1.2);
+                suspicionHud.classList.add('active');
+            } else {
+                suspicion = Math.max(0, suspicion - 0.5);
+                if (suspicion === 0) suspicionHud.classList.remove('active');
+            }
+
+            suspicionFill.style.width = `${suspicion}%`;
+            suspicionText.textContent = `${Math.floor(suspicion)}%`;
+
+            if (suspicion >= 100) {
+                suspicion = 0;
+                suspicionHud.classList.remove('active');
+                player.cash = Math.floor(player.cash * 0.7);
+                player.stock = Math.max(0, player.stock - 3);
+                AudioEngine.onRestock();
+                showNotification("🚔 CONTRÔLE POLICE ! Saisie de marchandise (-30% Cash, -3 Stock) !");
+                updateHUD();
+            }
+        }
+
+        function drawCopSprite(x, y, cop) {
+            ctx.beginPath();
+            ctx.ellipse(x, y + 4, 12, 6, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+            ctx.fill();
+
+            ctx.fillStyle = '#1e3a8a';
+            ctx.beginPath();
+            ctx.roundRect(x - 7, y - 24, 14, 14, 3);
+            ctx.fill();
+
+            ctx.fillStyle = '#f7d0a1';
+            ctx.beginPath();
+            ctx.arc(x, y - 29, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(x - 7, y - 35, 14, 5);
+
+            const isRed = Math.sin(animTime * 12) > 0;
+            ctx.fillStyle = isRed ? '#ff0055' : '#00d8ff';
+            ctx.shadowColor = isRed ? '#ff0055' : '#00d8ff';
+            ctx.shadowBlur = 12;
+            ctx.beginPath();
+            ctx.arc(x, y - 40, 4, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.shadowBlur = 0;
+        }
+
+        /* ==========================================================================
+           7. WEEDDASH ORDER SYSTEM (UBER WEED DELIVERIES)
+           ========================================================================== */
+        const activeOrders = [];
+        let driverRating = 5.0;
+
+        const strains = [
+            { name: 'Purple Haze (Sativa)', pay: 65, xp: 30 },
+            { name: 'Gelato #33 (Indica)', pay: 85, xp: 40 },
+            { name: 'CBD Gummies (Edibles)', pay: 45, xp: 20 },
+            { name: 'Nantes Kush Premium', pay: 110, xp: 50 }
+        ];
+
+        function spawnWeedDashOrder() {
+            if (activeOrders.length >= 2) return;
+
+            let col, row, attempts = 0;
+            do {
+                col = Math.floor(3 + Math.random() * (GRID_SIZE - 6));
+                row = Math.floor(3 + Math.random() * (GRID_SIZE - 6));
+                attempts++;
+            } while (!isTileWalkable(col, row) && attempts < 50);
+
+            if (isTileWalkable(col, row)) {
+                const strain = strains[Math.floor(Math.random() * strains.length)];
+                const order = {
+                    id: Math.random().toString(36).substr(2, 7),
+                    col: col,
+                    row: row,
+                    strain: strain.name,
+                    rewardCash: strain.pay,
+                    rewardXP: strain.xp,
+                    timeLeft: 40
+                };
+                activeOrders.push(order);
+                renderWeedDashWidget();
+                showNotification(`🌿 Nouvelle Commande WeedDash : ${strain.name} (${strain.pay}€) !`);
+            }
+        }
+
+        setInterval(spawnWeedDashOrder, 9000);
+        setTimeout(spawnWeedDashOrder, 1500);
+
+        function updateOrders() {
+            for (let i = activeOrders.length - 1; i >= 0; i--) {
+                const ord = activeOrders[i];
+                ord.timeLeft -= 1;
+                if (ord.timeLeft <= 0) {
+                    activeOrders.splice(i, 1);
+                    driverRating = Math.max(1.0, parseFloat((driverRating - 0.2).toFixed(1)));
+                    showNotification("❌ Commande expirée ! Note Driver en baisse.");
+                    renderWeedDashWidget();
+                }
+            }
+            renderWeedDashWidget();
+        }
+
+        setInterval(updateOrders, 1000);
+
+        function renderWeedDashWidget() {
+            const listEl = document.getElementById('activeOrdersList');
+            const ratingEl = document.getElementById('driverRating');
+            if (ratingEl) ratingEl.textContent = driverRating.toFixed(1);
+
+            if (!listEl) return;
+            if (activeOrders.length === 0) {
+                listEl.innerHTML = `<div style="font-size: 11px; color: var(--text-dim); text-align: center; padding: 6px;">En attente de commandes...</div>`;
+                return;
+            }
+
+            listEl.innerHTML = activeOrders.map(ord => `
+                <div class="order-card ${ord.timeLeft < 15 ? 'urgent' : ''}">
+                    <div class="order-top">
+                        <span class="strain-name">${ord.strain}</span>
+                        <span class="order-timer">⏱️ ${ord.timeLeft}s</span>
+                    </div>
+                    <div class="order-payout">Gain : +${ord.rewardCash}€ | +${ord.rewardXP}XP</div>
+                </div>
+            `).join('');
+        }
+
+        /* ==========================================================================
+           8. NPC CUSTOMERS MANAGER & DEALS
            ========================================================================== */
         const npcs = [];
         const MAX_NPCS = 6;
@@ -1341,13 +1743,55 @@
                 }
             }
 
-            // C. NPCs
+            // C. NPCs & Delivery Destinations
             npcs.forEach(npc => {
                 const pos = gridToScreen(npc.subCol, npc.subRow, 0);
                 renderList.push({
                     depth: (npc.col + npc.row) * 100 + 40,
                     draw: () => {
                         drawNPCSprite(pos.x, pos.y, npc);
+                    }
+                });
+            });
+
+            // Police Patrol Officers
+            cops.forEach(cop => {
+                const pos = gridToScreen(cop.subCol, cop.subRow, 0);
+                renderList.push({
+                    depth: (cop.col + cop.row) * 100 + 45,
+                    draw: () => {
+                        drawCopSprite(pos.x, pos.y, cop);
+                    }
+                });
+            });
+
+            // Procedural Traffic Cars
+            cars.forEach(car => {
+                const pos = gridToScreen(car.subCol, car.subRow, 0);
+                renderList.push({
+                    depth: (Math.floor(car.subCol) + Math.floor(car.subRow)) * 100 + 30,
+                    draw: () => {
+                        drawCarSprite(pos.x, pos.y, car);
+                    }
+                });
+            });
+
+            // Active WeedDash Order Customer Destination Markers
+            activeOrders.forEach(ord => {
+                const pos = gridToScreen(ord.col, ord.row, 0);
+                renderList.push({
+                    depth: (ord.col + ord.row) * 100 + 15,
+                    draw: () => {
+                        // Pulsing Weed Icon Bag over delivery target
+                        ctx.save();
+                        const bounceY = Math.sin(animTime * 6) * 4;
+                        ctx.shadowColor = varColor('--neon-green');
+                        ctx.shadowBlur = 12;
+                        ctx.fillStyle = varColor('--neon-green');
+                        ctx.font = '700 18px var(--font-tech)';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('🛍️ WeedDash', pos.x, pos.y - 35 + bounceY);
+                        ctx.restore();
                     }
                 });
             });
@@ -1443,6 +1887,9 @@
            9. GAMEPLAY LOGIC & MOVEMENT UPDATES
            ========================================================================== */
         function updateGameLogic() {
+            updateTraffic();
+            updatePolice();
+
             // Player Movement Along Path
             if (player.path.length > 0) {
                 const targetNode = player.path[0];
@@ -1456,6 +1903,9 @@
                     player.col = targetNode.col;
                     player.row = targetNode.row;
                     player.path.shift();
+
+                    // Check WeedDash delivery completion at player step
+                    checkWeedDashDelivery();
 
                     // Step sound effect per ground type
                     const currentTile = map[player.col][player.row];
@@ -1474,6 +1924,37 @@
                     player.col = Math.round(player.subCol);
                     player.row = Math.round(player.subRow);
                     player.moving = true;
+                }
+            }
+        }
+
+        function checkWeedDashDelivery() {
+            for (let i = activeOrders.length - 1; i >= 0; i--) {
+                const ord = activeOrders[i];
+                const dist = Math.hypot(player.col - ord.col, player.row - ord.row);
+                if (dist <= 1.5) {
+                    if (player.stock <= 0) {
+                        showNotification("📦 Stock épuisé pour livrer ! Ravitaillez-vous !");
+                        return;
+                    }
+
+                    player.stock--;
+                    player.cash += ord.rewardCash;
+                    player.xp += ord.rewardXP;
+                    player.reputation++;
+                    driverRating = Math.min(5.0, parseFloat((driverRating + 0.1).toFixed(1)));
+
+                    AudioEngine.onTransactionSuccess();
+
+                    const pos = gridToScreen(ord.col, ord.row, 0);
+                    spawnFloatingText(`+${ord.rewardCash}€ ⭐5.0`, pos.x, pos.y - 30, '#00ff88');
+                    spawnParticles(pos.x, pos.y, 20, '#00ff88');
+
+                    activeOrders.splice(i, 1);
+                    showNotification(`✅ Livraison WeedDash effectuée : ${ord.strain} (+${ord.rewardCash}€) !`);
+                    checkLevelUp();
+                    updateHUD();
+                    renderWeedDashWidget();
                 }
             }
         }
