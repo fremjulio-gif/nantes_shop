@@ -1,636 +1,1679 @@
 <!DOCTYPE html>
 <html lang="fr">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nantes Underground – V2 (Place Bretagne)</title>
-<style>
-  :root {
-    --bg-dark: #0a0a12;
-    --glass-bg: rgba(15, 15, 22, 0.6);
-    --glass-border: rgba(255, 255, 255, 0.08);
-    --accent: #e8c84a;
-    --text-main: #e2e2ee;
-    --text-dim: #888899;
-    --success: #7ef77e;
-  }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Nantes Underground | RPG Isométrique Place de Bretagne</title>
+    <!-- Modern Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #07080c;
+            --glass-bg: rgba(13, 15, 24, 0.78);
+            --glass-border: rgba(0, 255, 136, 0.25);
+            --glass-glow: rgba(0, 255, 136, 0.15);
+            --neon-green: #00ff88;
+            --neon-gold: #ffd700;
+            --neon-blue: #00d8ff;
+            --neon-pink: #ff0055;
+            --text-main: #f0f4f8;
+            --text-dim: #94a3b8;
+            --font-main: 'Inter', sans-serif;
+            --font-tech: 'Rajdhani', sans-serif;
+        }
 
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body {
-    background: var(--bg-dark);
-    font-family: 'Courier New', Courier, monospace;
-    overflow: hidden;
-    user-select: none;
-    color: var(--text-main);
-  }
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
 
-  /* ── INTERFACE GLASSMORPHISM ── */
-  .ui-layer {
-    position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    pointer-events: none;
-    z-index: 100;
-    display: flex;
-    flex-direction: column;
-    justify-content: space-between;
-    padding: 20px;
-  }
+        body, html {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-dark);
+            font-family: var(--font-main);
+            color: var(--text-main);
+        }
 
-  .hud-top {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-  }
+        /* Canvas Container */
+        #game-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
 
-  .glass-panel {
-    background: var(--glass-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid var(--glass-border);
-    border-radius: 8px;
-    padding: 16px 24px;
-    pointer-events: auto;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-    transition: all 0.3s ease;
-  }
+        canvas#gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background: #06070a;
+            cursor: crosshair;
+        }
 
-  .rpg-info { display: flex; flex-direction: column; gap: 12px; min-width: 250px; }
-  .player-title { font-size: 14px; font-weight: bold; color: var(--accent); letter-spacing: 2px; text-transform: uppercase; }
-  .xp-container { width: 100%; }
-  .xp-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim); margin-bottom: 6px; }
-  .xp-bar-bg { width: 100%; height: 6px; background: rgba(0, 0, 0, 0.5); border-radius: 3px; overflow: hidden; }
-  .xp-bar-fill { height: 100%; background: var(--accent); width: 0%; transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: 0 0 10px var(--accent); }
+        /* Dark Glassmorphic UI Overlay */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.6), inset 0 0 12px var(--glass-glow);
+            border-radius: 14px;
+            position: relative;
+            overflow: hidden;
+        }
 
-  .stats-grid { display: flex; gap: 24px; }
-  .stat-box { display: flex; flex-direction: column; align-items: flex-end; }
-  .stat-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 1px; }
-  .stat-value { font-size: 18px; font-weight: bold; margin-top: 4px; }
-  .stat-value.cash { color: var(--accent); }
-  .stat-value.rep { color: #f87; }
+        /* Glass Shimmer Sheen Reflection */
+        .glass-panel::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -150%;
+            width: 100%;
+            height: 200%;
+            background: linear-gradient(
+                60deg,
+                transparent 30%,
+                rgba(255, 255, 255, 0.08) 50%,
+                transparent 70%
+            );
+            transform: rotate(25deg);
+            animation: glassShimmer 8s infinite linear;
+            pointer-events: none;
+        }
 
-  .hud-bottom { display: flex; justify-content: center; padding-bottom: 20px; }
-  #message-bar {
-    background: rgba(10, 10, 15, 0.85); border: 1px solid rgba(255, 255, 255, 0.15);
-    color: #fff; font-size: 13px; padding: 10px 24px; border-radius: 20px;
-    letter-spacing: 0.5px; opacity: 0; transform: translateY(20px);
-    transition: opacity 0.4s ease, transform 0.4s ease; text-align: center;
-  }
-  #message-bar.visible { opacity: 1; transform: translateY(0); }
+        @keyframes glassShimmer {
+            0% { left: -150%; }
+            25% { left: 150%; }
+            100% { left: 150%; }
+        }
 
-  #custom-panel {
-    display: none; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-    min-width: 260px; z-index: 200;
-  }
-  .color-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
-  .color-row label { font-size: 12px; color: var(--text-main); text-transform: uppercase; letter-spacing: 1px; }
-  .color-row input[type=color] { width: 40px; height: 28px; border: none; background: transparent; cursor: pointer; }
-  .btn-close {
-    width: 100%; background: var(--accent); color: #000; border: none; padding: 10px;
-    border-radius: 4px; font-family: inherit; font-weight: bold; cursor: pointer;
-    margin-top: 10px; transition: background 0.2s;
-  }
-  .btn-close:hover { background: #fff; }
+        /* Entry Animations */
+        @keyframes hudSlideDown {
+            from { opacity: 0; transform: translateX(-50%) translateY(-30px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
 
-  canvas { display: block; cursor: crosshair; image-rendering: pixelated; }
-  .controls-hint { position: absolute; bottom: 20px; left: 20px; font-size: 10px; color: var(--text-dim); }
-</style>
+        @keyframes hudSlideLeft {
+            from { opacity: 0; transform: translateX(-40px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes hudSlideRight {
+            from { opacity: 0; transform: translateX(40px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @keyframes hudSlideUp {
+            from { opacity: 0; transform: translateY(30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Top Header Stats HUD */
+        #hud-top {
+            position: absolute;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            align-items: center;
+            gap: 24px;
+            padding: 12px 28px;
+            z-index: 10;
+            animation: hudSlideDown 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .stat-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stat-icon {
+            font-size: 20px;
+            line-height: 1;
+        }
+
+        .stat-content {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-dim);
+        }
+
+        .stat-value {
+            font-family: var(--font-tech);
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+            transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .stat-value.cash { color: var(--neon-gold); text-shadow: 0 0 10px rgba(255, 215, 0, 0.4); }
+        .stat-value.stock { color: var(--neon-green); text-shadow: 0 0 10px rgba(0, 255, 136, 0.4); }
+        .stat-value.rep { color: var(--neon-blue); text-shadow: 0 0 10px rgba(0, 216, 255, 0.4); }
+
+        /* HUD Value Pop Animation */
+        .value-pop {
+            animation: valuePop 0.45s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes valuePop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.35); text-shadow: 0 0 20px var(--neon-gold); }
+            100% { transform: scale(1); }
+        }
+
+        /* Level & XP Gauge */
+        .level-badge {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--neon-green), #008855);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: var(--font-tech);
+            font-weight: 900;
+            font-size: 20px;
+            color: #000;
+            box-shadow: 0 0 16px var(--neon-green);
+        }
+
+        .xp-container {
+            display: flex;
+            flex-direction: column;
+            width: 140px;
+            gap: 4px;
+        }
+
+        .xp-bar-bg {
+            width: 100%;
+            height: 10px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+            border: 1px solid rgba(0, 255, 136, 0.3);
+        }
+
+        .xp-bar-fill {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, var(--neon-green), var(--neon-blue));
+            box-shadow: 0 0 8px var(--neon-green);
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Action Side Controls */
+        #controls-left {
+            position: absolute;
+            left: 20px;
+            top: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 10;
+            animation: hudSlideLeft 0.8s 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .title-card {
+            padding: 14px 20px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .title-card h1 {
+            font-family: var(--font-tech);
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            background: linear-gradient(90deg, #fff, var(--neon-green));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-transform: uppercase;
+        }
+
+        .title-card p {
+            font-size: 11px;
+            color: var(--text-dim);
+        }
+
+        .action-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            color: var(--text-main);
+            padding: 12px 18px;
+            border-radius: 10px;
+            font-family: var(--font-tech);
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.25s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        .action-btn:hover {
+            background: rgba(0, 255, 136, 0.15);
+            border-color: var(--neon-green);
+            transform: translateY(-2px) scale(1.02);
+            box-shadow: 0 6px 20px rgba(0, 255, 136, 0.35);
+        }
+
+        .action-btn:active {
+            transform: translateY(0) scale(0.98);
+        }
+
+        /* Quick Info / Location Tag */
+        #location-tag {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            padding: 10px 18px;
+            font-family: var(--font-tech);
+            font-size: 14px;
+            color: var(--neon-blue);
+            letter-spacing: 1px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            z-index: 10;
+            animation: hudSlideRight 0.8s 0.25s cubic-bezier(0.16, 1, 0.3, 1) both;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.3; transform: scale(0.9); }
+            50% { opacity: 1; transform: scale(1.3); }
+            100% { opacity: 0.3; transform: scale(0.9); }
+        }
+
+        /* Modal Customization */
+        .modal-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(4, 5, 8, 0.85);
+            backdrop-filter: blur(16px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            width: 440px;
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            transform: scale(0.9);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .modal-overlay.active .modal-content {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+            padding-bottom: 12px;
+        }
+
+        .modal-header h2 {
+            font-family: var(--font-tech);
+            font-size: 22px;
+            color: var(--neon-green);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            font-size: 24px;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .close-btn:hover { color: var(--neon-pink); }
+
+        .customization-body {
+            display: grid;
+            grid-template-columns: 1fr 140px;
+            gap: 20px;
+            align-items: center;
+        }
+
+        .color-pickers {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .color-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .color-row label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-main);
+        }
+
+        .color-row input[type="color"] {
+            -webkit-appearance: none;
+            appearance: none;
+            border: 1px solid var(--glass-border);
+            width: 38px;
+            height: 38px;
+            border-radius: 8px;
+            cursor: pointer;
+            background: none;
+        }
+
+        .color-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        .color-row input[type="color"]::-webkit-color-swatch { border: none; border-radius: 6px; }
+
+        #previewCanvas {
+            width: 140px;
+            height: 160px;
+            border-radius: 12px;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid var(--glass-border);
+        }
+
+        /* Floating Toast Notification */
+        #notification-banner {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            padding: 14px 28px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            z-index: 50;
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.4s;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        #notification-banner.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .notif-text {
+            font-family: var(--font-tech);
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--neon-gold);
+            letter-spacing: 0.5px;
+        }
+
+        /* Controls Hint Overlay at bottom right */
+        #controls-hint {
+            position: absolute;
+            right: 20px;
+            bottom: 20px;
+            padding: 10px 16px;
+            font-size: 11px;
+            color: var(--text-dim);
+            z-index: 10;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        #controls-hint span { color: var(--neon-green); font-weight: 600; }
+
+        /* Level Up Flash Animation Overlay */
+        #level-up-flash {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle, rgba(0, 255, 136, 0.35) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 90;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+    </style>
 </head>
 <body>
 
-<div class="ui-layer">
-  <div class="hud-top">
-    <div class="glass-panel rpg-info">
-      <div class="player-title">Place Bretagne</div>
-      <div class="xp-container">
-        <div class="xp-labels"><span id="ui-level">Niveau 1</span><span id="ui-xp-text">0 / 100 XP</span></div>
-        <div class="xp-bar-bg"><div class="xp-bar-fill" id="ui-xp-fill"></div></div>
-      </div>
+    <div id="game-container">
+        <!-- Main Canvas -->
+        <canvas id="gameCanvas"></canvas>
+
+        <!-- Top HUD -->
+        <div id="hud-top" class="glass-panel">
+            <div class="stat-box">
+                <div id="levelBadge" class="level-badge">1</div>
+                <div class="xp-container">
+                    <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-dim); font-weight: 700;">
+                        <span>XP</span>
+                        <span id="xpText">0 / 100</span>
+                    </div>
+                    <div class="xp-bar-bg">
+                        <div id="xpBarFill" class="xp-bar-fill"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="width: 1px; height: 30px; background: rgba(255,255,255,0.1);"></div>
+
+            <div class="stat-box">
+                <span class="stat-icon">💰</span>
+                <div class="stat-content">
+                    <span class="stat-label">CASH</span>
+                    <span id="cashVal" class="stat-value cash">50 €</span>
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <span class="stat-icon">📦</span>
+                <div class="stat-content">
+                    <span class="stat-label">STOCK</span>
+                    <span id="stockVal" class="stat-value stock">10 u</span>
+                </div>
+            </div>
+
+            <div class="stat-box">
+                <span class="stat-icon">⭐</span>
+                <div class="stat-content">
+                    <span class="stat-label">RÉPUTATION</span>
+                    <span id="repVal" class="stat-value rep">Level 1</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Left Actions -->
+        <div id="controls-left">
+            <div class="glass-panel title-card">
+                <h1>Nantes Underground</h1>
+                <p>Place de Bretagne • Dealer/Gestion 3D</p>
+            </div>
+
+            <button id="btnRestock" class="action-btn">
+                <span>🏬</span> Ravitaillement (20€ -> +5 Stock)
+            </button>
+
+            <button id="btnCustomize" class="action-btn">
+                <span>🎨</span> Style du Joueur
+            </button>
+        </div>
+
+        <!-- Location Tag -->
+        <div id="location-tag" class="glass-panel">
+            <div class="pulse-dot"></div>
+            <span>PLACE DE BRETAGNE, NANTES</span>
+        </div>
+
+        <!-- Bottom Controls Hint -->
+        <div id="controls-hint" class="glass-panel">
+            <div>• <span>Clic sur le sol</span> : Déplacement fluide</div>
+            <div>• <span>Clic sur PNJ (!)</span> : Conclure un deal (-1 Stock)</div>
+            <div>• <span>Clic sur le Joueur</span> : Personnalisation</div>
+        </div>
+
+        <!-- Level Up Flash Overlay -->
+        <div id="level-up-flash"></div>
+
+        <!-- Notification Banner -->
+        <div id="notification-banner" class="glass-panel">
+            <span style="font-size: 24px;">🔥</span>
+            <div id="notificationText" class="notif-text">Niveau Supérieur Débloqué !</div>
+        </div>
+
+        <!-- Customization Modal -->
+        <div id="modalCustomization" class="modal-overlay">
+            <div class="glass-panel modal-content">
+                <div class="modal-header">
+                    <h2>Style de ton Dealer</h2>
+                    <button id="btnCloseModal" class="close-btn">&times;</button>
+                </div>
+                <div class="customization-body">
+                    <div class="color-pickers">
+                        <div class="color-row">
+                            <label for="colJacket">Veste / Hoodie</label>
+                            <input type="color" id="colJacket" value="#00ff88">
+                        </div>
+                        <div class="color-row">
+                            <label for="colPants">Pantalon / Jean</label>
+                            <input type="color" id="colPants" value="#1a202c">
+                        </div>
+                        <div class="color-row">
+                            <label for="colHair">Cheveux / Casquette</label>
+                            <input type="color" id="colHair" value="#ffd700">
+                        </div>
+                        <div class="color-row">
+                            <label for="colShoes">Sneakers</label>
+                            <input type="color" id="colShoes" value="#ffffff">
+                        </div>
+                    </div>
+                    <canvas id="previewCanvas"></canvas>
+                </div>
+                <button id="btnSaveCustom" class="action-btn" style="justify-content: center; background: var(--neon-green); color: #000;">
+                    Valider le Look
+                </button>
+            </div>
+        </div>
     </div>
-    <div class="glass-panel stats-grid">
-      <div class="stat-box"><span class="stat-label">Cash</span><span class="stat-value cash" id="ui-cash">0 €</span></div>
-      <div class="stat-box"><span class="stat-label">Stock</span><span class="stat-value" id="ui-stock">10 u</span></div>
-      <div class="stat-box"><span class="stat-label">Réputation</span><span class="stat-value rep" id="ui-rep">0</span></div>
-    </div>
-  </div>
-  <div class="hud-bottom"><div id="message-bar">Bienvenue dans l'Underground.</div></div>
-  <div class="controls-hint">CLIC: Déplacement / Vente | JOUEUR: Tenue</div>
-</div>
 
-<div class="glass-panel" id="custom-panel">
-  <div class="player-title" style="margin-bottom: 20px; text-align: center;">Personnalisation</div>
-  <div class="color-row"><label>Veste</label><input type="color" id="col-body" value="#2255cc"></div>
-  <div class="color-row"><label>Pantalon</label><input type="color" id="col-pants" value="#222222"></div>
-  <div class="color-row"><label>Chaussures</label><input type="color" id="col-shoes" value="#884411"></div>
-  <div class="color-row"><label>Peau</label><input type="color" id="col-skin" value="#f5c5a0"></div>
-  <button class="btn-close" id="close-panel">CONFIRMER</button>
-</div>
+    <!-- MAIN GAME LOGIC (VANILLA JS) -->
+    <script>
+        /* ==========================================================================
+           1. AUDIO ENGINE (Web Audio API Synthesizer)
+           ========================================================================== */
+        const AudioEngine = {
+            ctx: null,
+            init() {
+                if (!this.ctx) {
+                    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioCtx();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            },
+            onStep(groundType) {
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
 
-<canvas id="gameCanvas"></canvas>
+                    const now = this.ctx.currentTime;
+                    let freq = 120;
+                    if (groundType === 'tram_track') freq = 240;
+                    if (groundType === 'grass') freq = 80;
 
-<script>
-// ═══════════════════════════════════════════════════════════════
-//  NANTES UNDERGROUND V2 – Moteur Isométrique & RPG
-// ═══════════════════════════════════════════════════════════════
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(freq, now);
+                    osc.frequency.exponentialRampToValueAtTime(30, now + 0.05);
 
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d', { alpha: false });
+                    gain.gain.setValueAtTime(0.08, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.05);
 
-// ──────────────────────────────────────────────────────────────
-//  AUDIO HOOKS (Pour Sound Design Externe)
-// ──────────────────────────────────────────────────────────────
-const AudioEngine = {
-  onTransactionSuccess(price, newXp) {},
-  onLevelUp(newLevel) {},
-  onStep(surfaceId) {},
-  onCameraMove(speedX, speedY) {}
-};
+                    osc.start(now);
+                    osc.stop(now + 0.05);
+                } catch (e) {}
+            },
+            onTransactionSuccess() {
+                if (!this.ctx) return;
+                try {
+                    const now = this.ctx.currentTime;
+                    // Dual tone chime (Coin sound)
+                    [523.25, 659.25, 783.99].forEach((freq, idx) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
 
-// ──────────────────────────────────────────────────────────────
-//  GEOMETRIE & CAMERA
-// ──────────────────────────────────────────────────────────────
-const TILE_W = 64;
-const TILE_H = 32;
-const MAP_COLS = 30;
-const MAP_ROWS = 30;
+                        osc.type = 'triangle';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.06);
 
-let cw, ch;
-function resize() {
-  cw = window.innerWidth;
-  ch = window.innerHeight;
-  canvas.width = cw;
-  canvas.height = ch;
-}
-window.addEventListener('resize', resize);
-resize();
+                        gain.gain.setValueAtTime(0.15, now + idx * 0.06);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.12);
 
-function isoX(col, row) { return (col - row) * (TILE_W / 2); }
-function isoY(col, row) { return (col + row) * (TILE_H / 2); }
+                        osc.start(now + idx * 0.06);
+                        osc.stop(now + idx * 0.06 + 0.12);
+                    });
+                } catch (e) {}
+            },
+            onLevelUp() {
+                if (!this.ctx) return;
+                try {
+                    const now = this.ctx.currentTime;
+                    const notes = [261.63, 329.63, 392.00, 523.25, 659.25, 783.99, 1046.50];
+                    notes.forEach((freq, idx) => {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
 
-function toGrid(wx, wy) {
-  const col = (wx / (TILE_W / 2) + wy / (TILE_H / 2)) / 2;
-  const row = (wy / (TILE_H / 2) - wx / (TILE_W / 2)) / 2;
-  return { col, row };
-}
+                        osc.type = 'square';
+                        osc.frequency.setValueAtTime(freq, now + idx * 0.05);
 
-const camera = { x: 0, y: 0 };
+                        gain.gain.setValueAtTime(0.12, now + idx * 0.05);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.05 + 0.2);
 
-function updateCamera() {
-  const targetX = isoX(player.col, player.row);
-  const targetY = isoY(player.col, player.row) - 30;
-  
-  const dx = targetX - camera.x;
-  const dy = targetY - camera.y;
-  
-  camera.x += dx * 0.06;
-  camera.y += dy * 0.06;
+                        osc.start(now + idx * 0.05);
+                        osc.stop(now + idx * 0.05 + 0.2);
+                    });
+                } catch (e) {}
+            },
+            onCameraMove(speedX, speedY) {
+                // Hook called during active camera pan/lerp
+            },
+            onRestock() {
+                if (!this.ctx) return;
+                try {
+                    const now = this.ctx.currentTime;
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.connect(gain);
+                    gain.connect(this.ctx.destination);
 
-  if (Math.abs(dx) > 0.5 || Math.abs(dy) > 0.5) {
-    AudioEngine.onCameraMove(dx * 0.06, dy * 0.06);
-  }
-}
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, now);
+                    osc.frequency.linearRampToValueAtTime(400, now + 0.15);
 
-// ──────────────────────────────────────────────────────────────
-//  CARTE ET BATIMENTS (Refonte Place Bretagne)
-// ──────────────────────────────────────────────────────────────
-// 0: Pavés Place, 1: Asphalte, 2: Herbe/Arbres, 3: Trottoir, 4: Tram, 9: Socle Bâtiment
-const RAW_MAP = [
-  [9,9,9,9,9,9,9,9,1,1,9,9,9,9,9,9,1,1,9,9,9,9,9,9,9,9,1,1,1,1],
-  [9,9,9,9,9,9,9,9,1,1,9,9,9,9,9,9,1,1,9,9,9,9,9,9,9,9,1,1,1,1],
-  [9,9,9,9,9,9,9,9,1,1,9,9,9,9,9,9,1,1,9,9,9,9,9,9,9,9,1,1,1,1],
-  [9,9,9,9,9,9,9,9,1,1,9,9,9,9,9,9,1,1,3,3,3,3,3,3,3,3,1,1,1,1],
-  [3,3,3,3,3,3,3,3,1,1,3,3,3,3,3,3,1,1,9,9,9,9,9,9,9,9,1,1,1,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,9,9,9,9,9,9,9,9,1,1,1,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,9,9,9,9,9,9,9,9,1,1,1,1],
-  [3,3,3,3,3,3,3,3,1,1,0,0,0,0,4,4,0,0,9,9,9,9,9,9,9,9,1,1,1,1],
-  [9,9,9,3,2,2,0,0,1,1,0,0,0,0,4,4,0,0,9,9,9,9,9,9,9,9,1,1,1,1],
-  [9,9,9,3,2,2,0,0,1,1,0,0,0,0,4,4,0,0,3,3,3,3,3,3,3,3,1,1,1,1],
-  [9,9,9,3,0,0,0,0,1,1,0,0,0,0,4,4,0,0,0,0,0,0,0,0,0,3,1,1,1,1],
-  [9,9,9,3,9,9,9,9,9,9,0,0,0,0,4,4,0,0,0,0,0,0,0,0,0,3,1,1,1,1],
-  [9,9,9,3,9,9,9,9,9,9,0,0,0,0,4,4,0,0,0,0,0,0,0,0,0,3,1,1,1,1],
-  [9,9,9,3,9,9,9,9,9,9,0,0,0,0,4,4,0,0,0,0,0,0,0,0,0,3,1,1,1,1],
-  [9,9,9,3,9,9,9,9,9,9,0,0,0,0,4,4,0,0,0,0,0,0,0,0,0,3,1,1,1,1],
-  [9,9,9,3,9,9,9,9,9,9,0,0,0,0,4,4,0,0,0,0,9,9,9,9,9,9,1,1,1,1],
-  [1,1,1,3,9,9,9,9,9,9,0,0,0,0,4,4,0,0,0,0,9,9,9,9,9,9,1,1,1,1],
-  [1,1,1,3,0,0,0,0,0,0,0,0,0,0,4,4,0,0,0,0,9,9,9,9,9,9,1,1,1,1],
-  [1,1,1,3,0,0,0,0,0,0,0,0,0,0,4,4,0,0,0,0,9,9,9,9,9,9,1,1,1,1],
-  [1,1,1,3,0,0,0,0,0,0,0,0,0,0,4,4,0,0,0,0,9,9,9,9,9,9,1,1,1,1],
-  [1,1,1,3,0,0,0,0,0,0,0,0,0,0,4,4,0,0,0,0,9,9,9,9,9,9,1,1,1,1],
-  [9,9,9,3,0,0,0,0,0,0,0,0,0,0,4,4,0,0,0,0,0,0,0,0,0,3,1,1,1,1],
-  [9,9,9,3,0,0,0,0,0,0,0,0,0,0,4,4,0,0,0,0,0,0,0,0,0,3,1,1,1,1],
-  [9,9,9,3,0,0,0,0,0,0,0,0,0,0,4,4,0,0,0,0,0,0,0,0,0,3,1,1,1,1],
-  [9,9,9,3,2,2,0,0,0,0,0,0,0,0,4,4,0,0,0,0,0,2,2,0,0,3,1,1,1,1],
-  [9,9,9,3,2,2,0,0,0,0,0,0,0,0,4,4,0,0,0,0,0,2,2,0,0,3,1,1,1,1],
-  [3,3,3,3,3,3,3,3,3,3,3,3,3,3,4,4,3,3,3,3,3,3,3,3,3,3,1,1,1,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,4,4,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,4,4,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
-  [1,1,1,1,1,1,1,1,1,1,1,1,1,1,4,4,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
-];
+                    gain.gain.setValueAtTime(0.1, now);
+                    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
 
-const SOLID = new Set([8, 9]);
-function isSolid(c, r) {
-  if (c < 0 || r < 0 || c >= MAP_COLS || r >= MAP_ROWS) return true;
-  return SOLID.has(RAW_MAP[r][c]);
-}
+                    osc.start(now);
+                    osc.stop(now + 0.15);
+                } catch (e) {}
+            }
+        };
 
-const BUILDINGS_DATA = [
-  // Périphérie
-  { col:0, row:0, w:8, h:4, height:80, top:'#3C3F43', left:'#94979A', right:'#A5A8AC' }, // On garde le fond à gauche
-  // --- LES DEUX LIGNES SUPPRIMÉES ÉTAIENT ICI ---
-  { col:0, row:21, w:3, h:5, height:65, top:'#4A4D52', left:'#94979A', right:'#A5A8AC' }, // On garde le premier plan gauche
-  // Bâtiment Finances Publiques / Salle de Sport (Façade claire)
-  { col:20, row:15, w:6, h:6, height:60, top:'#35383D', left:'#D9DADD', right:'#EAEBEE', isWhiteBldg:true },
-  // Tour Bretagne - Socle Large
-  { col:4, row:11, w:6, h:6, height:35, top:'#D1D3D6', left:'#A5A8AC', right:'#B6B9BD' },
-  // Tour Bretagne - Tour Principale
-  { col:5, row:12, w:4, h:4, height:380, top:'#FFFFFF', left:'#1E1F21', right:'#26282B', isTour:true }
-];
+        /* ==========================================================================
+           2. GAME ENGINE SETUP & CONFIG
+           ========================================================================== */
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
 
-const SUB_BUILDINGS = [];
-BUILDINGS_DATA.forEach(b => {
-  for (let dc = 0; dc < b.w; dc++) {
-    for (let dr = 0; dr < b.h; dr++) {
-      SUB_BUILDINGS.push({
-        col: b.col + dc, row: b.row + dr, height: b.height,
-        top: b.top, left: b.left, right: b.right, isTour: b.isTour, isWhiteBldg: b.isWhiteBldg,
-        rx: dc, ry: dr, rw: b.w, rh: b.h
-      });
-    }
-  }
-});
+        const previewCanvas = document.getElementById('previewCanvas');
+        const previewCtx = previewCanvas.getContext('2d');
 
-// ──────────────────────────────────────────────────────────────
-//  ETAT DU JEU & RPG
-// ──────────────────────────────────────────────────────────────
-const player = {
-  col: 14, row: 18, targetCol: 14, targetRow: 18,
-  speed: 0.07, moving: false, walkDist: 0,
-  outfit: { body:'#2255cc', pants:'#222222', shoes:'#884411', skin:'#f5c5a0' }
-};
+        const GRID_SIZE = 30;
+        const TILE_W = 64;
+        const TILE_H = 32;
+        const HEIGHT_SCALE = 18;
 
-const rpg = { cash: 0, stock: 10, rep: 0, level: 1, xp: 0 };
+        // Camera State
+        const camera = {
+            x: 0,
+            y: 0,
+            targetX: 0,
+            targetY: 0,
+            lerpSpeed: 0.08
+        };
 
-function getXpRequired() { return rpg.level * 100; }
+        // Mouse & Input State
+        const mouse = {
+            x: 0,
+            y: 0,
+            worldCol: -1,
+            worldRow: -1,
+            hoveredNPC: null
+        };
 
-function updateHUD() {
-  document.getElementById('ui-cash').textContent = rpg.cash + ' €';
-  document.getElementById('ui-stock').textContent = rpg.stock + ' u';
-  document.getElementById('ui-rep').textContent = rpg.rep;
-  
-  const req = getXpRequired();
-  document.getElementById('ui-level').textContent = 'Niveau ' + rpg.level;
-  document.getElementById('ui-xp-text').textContent = `${rpg.xp} / ${req} XP`;
-  document.getElementById('ui-xp-fill').style.width = Math.min((rpg.xp / req) * 100, 100) + '%';
-}
+        // Player State
+        const player = {
+            col: 15,
+            row: 15,
+            subCol: 15.0,
+            subRow: 15.0,
+            targetCol: 15,
+            targetRow: 15,
+            path: [],
+            speed: 0.08,
+            moving: false,
+            cash: 50,
+            stock: 10,
+            xp: 0,
+            xpToNext: 100,
+            level: 1,
+            reputation: 1,
+            colors: {
+                jacket: '#00ff88',
+                pants: '#1a202c',
+                hair: '#ffd700',
+                shoes: '#ffffff'
+            }
+        };
 
-function gainXP(amount) {
-  rpg.xp += amount;
-  let req = getXpRequired();
-  if (rpg.xp >= req) {
-    rpg.xp -= req;
-    rpg.level++;
-    showMsg(`🌟 LEVEL UP ! Tu es niveau ${rpg.level} !`, 4000);
-    AudioEngine.onLevelUp(rpg.level);
-  }
-  updateHUD();
-}
+        /* Particle System for Game Feel */
+        const particles = [];
+        const floatTexts = [];
+        const clickRipples = [];
+        let animTime = 0;
 
-const msgEl = document.getElementById('message-bar');
-let msgTimer = null;
-function showMsg(txt, ms = 3000) {
-  msgEl.textContent = txt;
-  msgEl.classList.add('visible');
-  clearTimeout(msgTimer);
-  msgTimer = setTimeout(() => msgEl.classList.remove('visible'), ms);
-}
+        // Ambient Floating Light Dust Particles
+        const ambientDust = [];
+        for (let i = 0; i < 45; i++) {
+            ambientDust.push({
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight,
+                vx: (Math.random() - 0.5) * 0.4,
+                vy: -0.2 - Math.random() * 0.3,
+                size: 1 + Math.random() * 2.5,
+                alpha: Math.random(),
+                pulseSpeed: 0.02 + Math.random() * 0.03,
+                color: Math.random() > 0.4 ? 'rgba(0, 255, 136, ' : 'rgba(255, 215, 0, '
+            });
+        }
 
-// ──────────────────────────────────────────────────────────────
-//  PNJ
-// ──────────────────────────────────────────────────────────────
-const npcs = [];
-function spawnNPC() {
-  if (npcs.length >= 5) return;
-  let c, r;
-  do {
-    c = Math.floor(Math.random() * MAP_COLS);
-    r = Math.floor(Math.random() * MAP_ROWS);
-  } while (isSolid(c, r));
-  
-  npcs.push({
-    col: c + 0.5, row: r + 0.5, sold: false, blink: 0,
-    waitTimer: 600 + Math.random() * 400,
-    skin: `hsl(${Math.random()*360|0},40%,50%)`
-  });
-}
-spawnNPC(); spawnNPC();
-setInterval(spawnNPC, 5000);
+        function spawnFloatingText(text, screenX, screenY, color = '#ffd700') {
+            floatTexts.push({
+                text: text,
+                x: screenX,
+                y: screenY,
+                alpha: 1.0,
+                color: color,
+                vy: -1.5
+            });
+        }
 
-// ──────────────────────────────────────────────────────────────
-//  LOGIQUE
-// ──────────────────────────────────────────────────────────────
-function movePlayer(dt) {
-  if (!player.moving) return;
-  const dc = player.targetCol - player.col;
-  const dr = player.targetRow - player.row;
-  const dist = Math.sqrt(dc*dc + dr*dr);
-  
-  if (dist < 0.05) {
-    player.col = player.targetCol; player.row = player.targetRow;
-    player.moving = false;
-    return;
-  }
-  
-  const step = player.speed;
-  const nx = player.col + (dc / dist) * step;
-  const ny = player.row + (dr / dist) * step;
-  
-  if (!isSolid(Math.floor(nx), Math.floor(ny))) {
-    player.col = nx; player.row = ny;
-    player.walkDist += step;
-  } else {
-    player.moving = false;
-  }
+        function spawnParticles(screenX, screenY, count = 12, color = '#00ff88') {
+            for (let i = 0; i < count; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 1 + Math.random() * 3;
+                particles.push({
+                    x: screenX,
+                    y: screenY,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 1,
+                    size: 2 + Math.random() * 3,
+                    color: color,
+                    alpha: 1.0,
+                    life: 0.03 + Math.random() * 0.03
+                });
+            }
+        }
 
-  if (player.walkDist > 0.8) {
-    player.walkDist = 0;
-    const tileType = RAW_MAP[Math.floor(player.row)][Math.floor(player.col)];
-    AudioEngine.onStep(tileType);
-  }
-}
+        /* ==========================================================================
+           3. ISOMETRIC MATH HELPERS
+           ========================================================================== */
+        function gridToScreen(col, row, z = 0) {
+            const screenX = (col - row) * (TILE_W / 2);
+            const screenY = (col + row) * (TILE_H / 2) - z * HEIGHT_SCALE;
+            return { x: screenX, y: screenY };
+        }
 
-canvas.addEventListener('mousedown', e => {
-  const rect = canvas.getBoundingClientRect();
-  const sx = e.clientX - rect.left;
-  const sy = e.clientY - rect.top;
-  
-  const wx = sx - cw/2 + camera.x;
-  const wy = sy - ch/2 + camera.y;
-  
-  const px = isoX(player.col, player.row) - camera.x + cw/2;
-  const py = isoY(player.col, player.row) - camera.y + ch/2 - 20;
-  if (Math.hypot(sx - px, sy - py) < 30) {
-    document.getElementById('custom-panel').style.display = 'block';
-    return;
-  }
+        function screenToGrid(screenX, screenY) {
+            // Untranslate camera
+            const unCamX = screenX - camera.x;
+            const unCamY = screenY - camera.y;
 
-  for (let i = 0; i < npcs.length; i++) {
-    const n = npcs[i];
-    const nx = isoX(n.col, n.row) - camera.x + cw/2;
-    const ny = isoY(n.col, n.row) - camera.y + ch/2 - 20;
-    if (Math.hypot(sx - nx, sy - ny) < 25) {
-      handleSale(n, i);
-      return;
-    }
-  }
+            const col = (unCamX / (TILE_W / 2) + unCamY / (TILE_H / 2)) / 2;
+            const row = (unCamY / (TILE_H / 2) - unCamX / (TILE_W / 2)) / 2;
 
-  const grid = toGrid(wx, wy);
-  if (grid.col >= 0 && grid.row >= 0 && grid.col < MAP_COLS && grid.row < MAP_ROWS) {
-    if (!isSolid(Math.floor(grid.col), Math.floor(grid.row))) {
-      player.targetCol = grid.col;
-      player.targetRow = grid.row;
-      player.moving = true;
-      spawnClickFx(wx, wy);
-    }
-  }
-});
+            return {
+                col: Math.floor(col),
+                row: Math.floor(row)
+            };
+        }
 
-function handleSale(npc, idx) {
-  if (rpg.stock <= 0) { showMsg("Stock épuisé !"); return; }
-  if (npc.sold) return;
-  
-  const price = 25 + Math.floor(Math.random() * 40);
-  rpg.cash += price; rpg.stock -= 1; rpg.rep += 1;
-  npc.sold = true;
-  
-  showMsg(`Transaction réussie: +${price}€`);
-  AudioEngine.onTransactionSuccess(price, rpg.rep);
-  gainXP(35);
-  
-  setTimeout(() => npcs.splice(npcs.indexOf(npc), 1), 1500);
-  if (rpg.stock === 0) {
-    setTimeout(() => { rpg.stock = 10; updateHUD(); showMsg('📦 Réappro effectuée !'); }, 6000);
-  }
-}
+        /* ==========================================================================
+           4. TOPOGRAPHY & WORLD MAP GENERATOR (PLACE DE BRETAGNE)
+           ========================================================================== */
+        // Map Grid Stores tile type & building pillars
+        const map = [];
+        // Map of 1x1 Pillars: pillars[col][row] = { height, type, color, windows }
+        const pillars = {};
 
-const clickFx = [];
-function spawnClickFx(wx, wy) { clickFx.push({ x: wx, y: wy, r: 2, life: 20 }); }
+        function getPillar(c, r) {
+            return pillars[`${c}_${r}`] || null;
+        }
 
-// ──────────────────────────────────────────────────────────────
-//  RENDU GRAPHIQUE (Refonte Visuelle)
-// ──────────────────────────────────────────────────────────────
-const PALETTE = {
-  0: { t:'#D1C7B7', l:'#BDB3A4', r:'#C7BCAC' }, // Place / Pavés
-  1: { t:'#2A2C30', l:'#1F2124', r:'#24262A' }, // Route asphalte
-  2: { t:'#2E4A2E', l:'#1F331F', r:'#263D26' }, // Arbres/Herbe
-  3: { t:'#8B8E94', l:'#6A6C71', r:'#7C7E84' }, // Trottoir béton
-  4: { t:'#AAB0B6', l:'#929599', r:'#A3A6AA' }  // Voie Tramway
-};
+        function setPillar(c, r, height, type = 'building', options = {}) {
+            pillars[`${c}_${r}`] = {
+                height: height,
+                type: type,
+                color: options.color || '#1e2430',
+                edgeColor: options.edgeColor || '#ffffff',
+                roofColor: options.roofColor || '#2d3748',
+                windows: options.windows !== undefined ? options.windows : true
+            };
+        }
 
-function drawTile(c, r, type) {
-  const x = isoX(c, r), y = isoY(c, r);
-  const hw = TILE_W/2, hh = TILE_H/2;
-  const col = PALETTE[type] || PALETTE[0];
+        function generatePlaceDeBretagne() {
+            // 1. Base Ground Grid Topography
+            for (let c = 0; c < GRID_SIZE; c++) {
+                map[c] = [];
+                for (let r = 0; r < GRID_SIZE; r++) {
+                    let type = 'cobblestone';
 
-  ctx.beginPath();
-  ctx.moveTo(x, y - hh); ctx.lineTo(x + hw, y);
-  ctx.lineTo(x, y + hh); ctx.lineTo(x - hw, y);
-  ctx.closePath();
-  ctx.fillStyle = col.t; ctx.fill();
-  
-  ctx.strokeStyle = (type === 0 || type === 4) ? 'rgba(0,0,0,0.06)' : 'rgba(255,255,255,0.02)';
-  ctx.lineWidth = 1; ctx.stroke();
-  
-  // Arcs de cercle sur la Place
-  if (type === 0) {
-    const distToCenter = Math.sqrt(Math.pow(c - 7, 2) + Math.pow(r - 14, 2));
-    if (distToCenter % 3 < 0.4) {
-      ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)';
-      ctx.beginPath(); ctx.moveTo(x - hw/2, y + hh/2); ctx.lineTo(x, y); ctx.stroke();
-    }
-  }
+                    // Diagonal Tram Tracks (Line 3 passing Place de Bretagne)
+                    if (c + r === 20 || c + r === 21) {
+                        type = 'tram_track';
+                    }
+                    // Grass Patches
+                    else if ((c >= 2 && c <= 7 && r >= 12 && r <= 17) || (c >= 22 && c <= 27 && r >= 20 && r <= 25)) {
+                        type = 'grass';
+                    }
+                    // Paved outer perimeter road
+                    else if (c === 0 || r === 0 || c === GRID_SIZE - 1 || r === GRID_SIZE - 1) {
+                        type = 'paved_road';
+                    }
+                    // Concentric Circular Plaza pattern
+                    else {
+                        const distFromCenter = Math.hypot(c - 15, r - 15);
+                        if (distFromCenter < 5) {
+                            type = 'plaza_center';
+                        }
+                    }
 
-  // Rails du tramway
-  if (type === 4) {
-    ctx.strokeStyle = 'rgba(0,0,0,0.1)'; ctx.lineWidth = 2;
-    ctx.beginPath(); ctx.moveTo(x - hw/4, y - hh/4); ctx.lineTo(x + hw/4, y + hh/4); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(x - hw/1.5, y - hh/1.5); ctx.lineTo(x + hw/1.5, y + hh/1.5); ctx.stroke();
-  }
-}
+                    map[c][r] = { type: type };
+                }
+            }
 
-function drawBuildingBlock(b) {
-  const top = { x: isoX(b.col, b.row), y: isoY(b.col, b.row) };
-  const rgt = { x: isoX(b.col+1, b.row), y: isoY(b.col+1, b.row) };
-  const bot = { x: isoX(b.col+1, b.row+1), y: isoY(b.col+1, b.row+1) };
-  const lft = { x: isoX(b.col, b.row+1), y: isoY(b.col, b.row+1) };
-  const H = b.height;
+            // 2. 1x1 Volumetric Pillars Construction
+            // Tour Bretagne (4x4 footprint at col 4..7, row 4..7, Height 14)
+            for (let c = 4; c <= 7; c++) {
+                for (let r = 4; r <= 7; r++) {
+                    setPillar(c, r, 14, 'tour_bretagne', {
+                        color: '#121620',
+                        edgeColor: '#f0f4f8',
+                        roofColor: '#1a202c',
+                        windows: true
+                    });
+                }
+            }
 
-  // X-RAY : Rendre le bâtiment transparent si le joueur est derrière
-  const px = isoX(player.col, player.row);
-  const py = isoY(player.col, player.row);
-  const isBehind = Math.abs(px - bot.x) < (TILE_W * 0.8) && (py - bot.y) < 15 && (py - bot.y) > -H - 30;
-  ctx.globalAlpha = isBehind ? 0.25 : 1.0;
+            // Surrounding Buildings (Place de Bretagne Haussmann style)
+            // East Block (col 22..25, row 4..7, Height 5)
+            for (let c = 22; c <= 25; c++) {
+                for (let r = 4; r <= 7; r++) {
+                    setPillar(c, r, 5, 'haussmann_east', {
+                        color: '#2a2421',
+                        edgeColor: '#d69e2e',
+                        roofColor: '#4a5568',
+                        windows: true
+                    });
+                }
+            }
 
-  let lColor = b.left;
-  let rColor = b.right;
+            // South Block (col 5..8, row 22..25, Height 4)
+            for (let c = 5; c <= 8; c++) {
+                for (let r = 22; r <= 25; r++) {
+                    setPillar(c, r, 4, 'haussmann_south', {
+                        color: '#1f2937',
+                        edgeColor: '#6366f1',
+                        roofColor: '#374151',
+                        windows: true
+                    });
+                }
+            }
 
-  // Spécificités architecturales Tour Bretagne (Piliers blancs sur la façade sombre)
-  if (b.isTour) {
-    if (b.rx === 0) lColor = '#F4F5F7'; 
-    if (b.ry === b.rh - 1) rColor = '#E8EAEF'; 
-  }
+            // Tramway Shelter (col 11..12, row 9, Height 2)
+            setPillar(11, 9, 2, 'tram_shelter', { color: '#0f2b3c', edgeColor: '#00d8ff', roofColor: '#103a52', windows: false });
+            setPillar(12, 9, 2, 'tram_shelter', { color: '#0f2b3c', edgeColor: '#00d8ff', roofColor: '#103a52', windows: false });
+        }
 
-  // Face Gauche
-  ctx.fillStyle = lColor;
-  ctx.beginPath();
-  ctx.moveTo(lft.x, lft.y); ctx.lineTo(bot.x, bot.y);
-  ctx.lineTo(bot.x, bot.y - H); ctx.lineTo(lft.x, lft.y - H);
-  ctx.fill();
+        generatePlaceDeBretagne();
 
-  // Face Droite
-  ctx.fillStyle = rColor;
-  ctx.beginPath();
-  ctx.moveTo(bot.x, bot.y); ctx.lineTo(rgt.x, rgt.y);
-  ctx.lineTo(rgt.x, rgt.y - H); ctx.lineTo(bot.x, bot.y - H);
-  ctx.fill();
+        /* Collision Checker for Walkable Tiles */
+        function isTileWalkable(col, row) {
+            if (col < 0 || col >= GRID_SIZE || row < 0 || row >= GRID_SIZE) return false;
+            // Cannot walk on building pillars
+            if (getPillar(col, row) !== null) return false;
+            return true;
+        }
 
-  // Toit
-  ctx.fillStyle = b.top;
-  ctx.beginPath();
-  ctx.moveTo(top.x, top.y - H); ctx.lineTo(rgt.x, rgt.y - H);
-  ctx.lineTo(bot.x, bot.y - H); ctx.lineTo(lft.x, lft.y - H);
-  ctx.fill();
-  ctx.strokeStyle = 'rgba(255,255,255,0.08)'; ctx.stroke();
-  
-  // Vitrage sombre de la Tour Bretagne
-  if (b.isTour && b.rx > 0) {
-    ctx.fillStyle = '#111113';
-    ctx.fillRect(lft.x + 4, lft.y - H/1.05, TILE_W/2 - 8, H/1.1);
-  }
+        /* ==========================================================================
+           5. NPC CUSTOMERS MANAGER & DEALS
+           ========================================================================== */
+        const npcs = [];
+        const MAX_NPCS = 6;
 
-  // Fenêtres standards Bâtiments annexes
-  if (b.isWhiteBldg && b.ry === b.rh - 1) {
-    ctx.fillStyle = '#2A3035';
-    for(let w = 0; w < 3; w++) ctx.fillRect(lft.x + 6 + (w*10), lft.y - H/1.2, 5, H/1.5);
-  }
+        function spawnNPC() {
+            if (npcs.length >= MAX_NPCS) return;
 
-  ctx.globalAlpha = 1.0; // Reset
-}
+            let col, row, attempts = 0;
+            do {
+                col = Math.floor(2 + Math.random() * (GRID_SIZE - 4));
+                row = Math.floor(2 + Math.random() * (GRID_SIZE - 4));
+                attempts++;
+            } while (!isTileWalkable(col, row) && attempts < 50);
 
-function drawEntity(x, y, isPlayer, outfit, blink, sold) {
-  ctx.save();
-  ctx.translate(x, y);
-  
-  ctx.fillStyle = 'rgba(0,0,0,0.4)';
-  ctx.beginPath(); ctx.ellipse(0, 0, 10, 5, 0, 0, Math.PI*2); ctx.fill();
+            if (isTileWalkable(col, row)) {
+                npcs.push({
+                    id: Math.random().toString(36).substr(2, 9),
+                    col: col,
+                    row: row,
+                    subCol: col,
+                    subRow: row,
+                    targetCol: col,
+                    targetRow: row,
+                    color: ['#ff0055', '#00d8ff', '#ffd700', '#a855f7'][Math.floor(Math.random() * 4)],
+                    hasDeal: true,
+                    rewardCash: 35 + Math.floor(Math.random() * 40),
+                    rewardXP: 25,
+                    pulseAnim: 0
+                });
+            }
+        }
 
-  if (isPlayer) {
-    ctx.fillStyle = outfit.shoes; ctx.fillRect(-7, -4, 6, 4); ctx.fillRect(1, -4, 6, 4);
-    ctx.fillStyle = outfit.pants; ctx.fillRect(-7, -16, 6, 12); ctx.fillRect(1, -16, 6, 12);
-    ctx.fillStyle = outfit.body; ctx.fillRect(-8, -30, 16, 14);
-    ctx.fillRect(-12, -29, 4, 10); ctx.fillRect(8, -29, 4, 10);
-    ctx.fillStyle = outfit.skin; ctx.fillRect(-6, -42, 12, 12);
-    ctx.fillStyle = '#111'; ctx.fillRect(-4, -38, 3, 3); ctx.fillRect(1, -38, 3, 3);
-  } else {
-    ctx.fillStyle = '#222'; ctx.fillRect(-5, -12, 10, 12);
-    ctx.fillStyle = outfit.skin; ctx.fillRect(-6, -26, 12, 14);
-    ctx.fillStyle = '#ccc'; ctx.fillRect(-5, -36, 10, 10);
-    
-    if (sold) {
-      ctx.fillStyle = '#7ef77e'; ctx.font = '12px Courier'; ctx.fillText('✓', -4, -45);
-    } else if (blink < 20) {
-      ctx.fillStyle = '#e8c84a'; ctx.font = 'bold 16px Courier'; ctx.fillText('!', -4, -45);
-    }
-  }
-  ctx.restore();
-}
+        // Initial NPC population
+        for (let i = 0; i < 4; i++) spawnNPC();
+        setInterval(spawnNPC, 5000);
 
-function render() {
-  updateCamera();
+        /* ==========================================================================
+           6. PATHFINDING ENGINE (A* BFS GRID SEARCH)
+           ========================================================================== */
+        function findPath(startCol, startRow, targetCol, targetRow) {
+            if (!isTileWalkable(targetCol, targetRow)) return [];
 
-  ctx.fillStyle = '#0a0a12';
-  ctx.fillRect(0, 0, cw, ch);
+            const queue = [[startCol, startRow]];
+            const visited = new Set([`${startCol}_${startRow}`]);
+            const parentMap = {};
 
-  ctx.save();
-  ctx.translate(cw/2 - camera.x, ch/2 - camera.y);
+            const dirs = [
+                [0, -1], [1, 0], [0, 1], [-1, 0],
+                [1, -1], [1, 1], [-1, 1], [-1, -1]
+            ];
 
-  // 1. Sol
-  for (let r = 0; r < MAP_ROWS; r++) {
-    for (let c = 0; c < MAP_COLS; c++) {
-      const t = RAW_MAP[r][c];
-      if (t !== 8 && t !== 9) drawTile(c, r, t);
-    }
-  }
+            let reached = false;
 
-  // 2. Préparation du Y-Sort
-  const renderList = [];
-  
-  SUB_BUILDINGS.forEach(b => {
-    renderList.push({ sortKey: b.col + b.row + 2, type: 'bldg', data: b });
-  });
-  
-  renderList.push({ sortKey: player.col + player.row, type: 'player' });
-  
-  npcs.forEach(n => {
-    n.blink = (n.blink + 1) % 40;
-    renderList.push({ sortKey: n.col + n.row, type: 'npc', data: n });
-  });
+            while (queue.length > 0) {
+                const [c, r] = queue.shift();
+                if (c === targetCol && r === targetRow) {
+                    reached = true;
+                    break;
+                }
 
-  // Tri rigoureux
-  renderList.sort((a, b) => a.sortKey - b.sortKey);
+                for (const [dc, dr] of dirs) {
+                    const nc = c + dc;
+                    const nr = r + dr;
+                    const key = `${nc}_${nr}`;
 
-  // 3. Dessin
-  renderList.forEach(item => {
-    if (item.type === 'bldg') {
-      drawBuildingBlock(item.data);
-    } else if (item.type === 'player') {
-      drawEntity(isoX(player.col, player.row), isoY(player.col, player.row), true, player.outfit);
-    } else if (item.type === 'npc') {
-      const n = item.data;
-      drawEntity(isoX(n.col, n.row), isoY(n.col, n.row), false, {skin: n.skin}, n.blink, n.sold);
-    }
-  });
+                    if (isTileWalkable(nc, nr) && !visited.has(key)) {
+                        visited.add(key);
+                        parentMap[key] = [c, r];
+                        queue.push([nc, nr]);
+                    }
+                }
+            }
 
-  // 4. FX Clic
-  for (let i = clickFx.length - 1; i >= 0; i--) {
-    const fx = clickFx[i];
-    ctx.strokeStyle = `rgba(232, 200, 74, ${fx.life/20})`;
-    ctx.beginPath(); ctx.ellipse(fx.x, fx.y, fx.r, fx.r/2, 0, 0, Math.PI*2); ctx.stroke();
-    fx.r += 1.5; fx.life--;
-    if (fx.life <= 0) clickFx.splice(i, 1);
-  }
+            if (!reached) return [];
 
-  ctx.restore();
-}
+            // Reconstruct path
+            const path = [];
+            let curr = [targetCol, targetRow];
+            while (curr[0] !== startCol || curr[1] !== startRow) {
+                path.unshift({ col: curr[0], row: curr[1] });
+                const pKey = `${curr[0]}_${curr[1]}`;
+                curr = parentMap[pKey];
+            }
+            return path;
+        }
 
-let lastTime = 0;
-function loop(ts) {
-  const dt = ts - lastTime; lastTime = ts;
-  movePlayer(dt);
-  
-  for (let i = npcs.length - 1; i >= 0; i--) {
-    npcs[i].waitTimer--;
-    if (npcs[i].waitTimer <= 0 && !npcs[i].sold) npcs.splice(i, 1);
-  }
-  
-  render();
-  requestAnimationFrame(loop);
-}
+        /* ==========================================================================
+           7. PROCEDURAL CANVAS DRAWING & RENDERER (Y-SORT PIPELINE)
+           ========================================================================== */
+        function drawTileDiamond(x, y, w, h, fillStyle, strokeStyle = null) {
+            ctx.beginPath();
+            ctx.moveTo(x, y - h / 2);
+            ctx.lineTo(x + w / 2, y);
+            ctx.lineTo(x, y + h / 2);
+            ctx.lineTo(x - w / 2, y);
+            ctx.closePath();
 
-// ──────────────────────────────────────────────────────────────
-//  UI & EVENTS INIT
-// ──────────────────────────────────────────────────────────────
-['body', 'pants', 'shoes', 'skin'].forEach(k => {
-  const el = document.getElementById('col-' + k);
-  el.value = player.outfit[k];
-  el.addEventListener('input', () => player.outfit[k] = el.value);
-});
+            ctx.fillStyle = fillStyle;
+            ctx.fill();
 
-document.getElementById('close-panel').addEventListener('click', () => {
-  document.getElementById('custom-panel').style.display = 'none';
-});
+            if (strokeStyle) {
+                ctx.strokeStyle = strokeStyle;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+        }
 
-updateHUD();
-showMsg("Système en ligne. Clic pour interagir.", 4000);
-requestAnimationFrame(loop);
-</script>
+        /* Draw 1x1 Volumetric Pillar Block Face by Face */
+        function drawPillarBlock(x, y, z, pillar, isOccluding = false) {
+            const hScale = HEIGHT_SCALE;
+            const topY = y - hScale;
+
+            const origAlpha = ctx.globalAlpha;
+            if (isOccluding) {
+                ctx.globalAlpha = 0.25;
+            }
+
+            // Colors for 3D Shading (Top, Left Face, Right Face)
+            const baseColor = pillar.color;
+
+            // 1. Left Face (Darkened)
+            ctx.beginPath();
+            ctx.moveTo(x - TILE_W / 2, y);
+            ctx.lineTo(x, y + TILE_H / 2);
+            ctx.lineTo(x, y + TILE_H / 2 - hScale);
+            ctx.lineTo(x - TILE_W / 2, y - hScale);
+            ctx.closePath();
+            ctx.fillStyle = baseColor;
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+            ctx.lineWidth = 0.5;
+            ctx.stroke();
+
+            // 2. Right Face (Slightly Lighter)
+            ctx.beginPath();
+            ctx.moveTo(x + TILE_W / 2, y);
+            ctx.lineTo(x, y + TILE_H / 2);
+            ctx.lineTo(x, y + TILE_H / 2 - hScale);
+            ctx.lineTo(x + TILE_W / 2, y - hScale);
+            ctx.closePath();
+            ctx.fillStyle = adjustBrightness(baseColor, 15);
+            ctx.fill();
+            ctx.stroke();
+
+            // 3. Top Diamond Face
+            drawTileDiamond(x, topY, TILE_W, TILE_H, z === pillar.height - 1 ? pillar.roofColor : adjustBrightness(baseColor, 30), pillar.edgeColor);
+
+            // Windows effect on top layers
+            if (pillar.windows && z > 1 && z < pillar.height - 1) {
+                if ((z + Math.floor(x)) % 2 === 0) {
+                    // Left window lit
+                    ctx.fillStyle = 'rgba(0, 216, 255, 0.7)';
+                    ctx.fillRect(x - 14, y - hScale * 0.6, 6, 8);
+                    // Right window lit
+                    ctx.fillStyle = 'rgba(255, 215, 0, 0.7)';
+                    ctx.fillRect(x + 8, y - hScale * 0.6, 6, 8);
+                }
+            }
+
+            // White Architectural Edge Highlight for Tour Bretagne & Modern Buildings
+            if (pillar.edgeColor) {
+                ctx.beginPath();
+                ctx.moveTo(x - TILE_W / 2, y - hScale);
+                ctx.lineTo(x, y + TILE_H / 2 - hScale);
+                ctx.lineTo(x + TILE_W / 2, y - hScale);
+                ctx.strokeStyle = pillar.edgeColor;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            ctx.globalAlpha = origAlpha;
+        }
+
+        function adjustBrightness(hex, percent) {
+            let num = parseInt(hex.replace('#', ''), 16),
+                amt = Math.round(2.55 * percent),
+                R = (num >> 16) + amt,
+                B = (num >> 8 & 0x00FF) + amt,
+                G = (num & 0x0000FF) + amt;
+            return '#' + (0x1000000 + (R < 255 ? R < 1 ? 0 : R : 255) * 0x10000 + (B < 255 ? B < 1 ? 0 : B : 255) * 0x100 + (G < 255 ? G < 1 ? 0 : G : 255)).toString(16).slice(1);
+        }
+
+        /* Draw Isometric Player Sprite */
+        function drawPlayerSprite(x, y, colors) {
+            const pBounceY = Math.sin(animTime * (player.moving ? 14 : 4)) * (player.moving ? 3.5 : 1.2);
+            const shadowRadiusX = 14 + Math.sin(animTime * (player.moving ? 14 : 4)) * 2;
+
+            // Dynamic Squashing Shadow
+            ctx.beginPath();
+            ctx.ellipse(x, y + 4, shadowRadiusX, 6.5, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+            ctx.fill();
+
+            // Apply Bobbing Y Offset
+            const spriteY = y - pBounceY;
+
+            // Legs / Pants
+            ctx.fillStyle = colors.pants;
+            ctx.fillRect(x - 6, spriteY - 14, 5, 12);
+            ctx.fillRect(x + 1, spriteY - 14, 5, 12);
+
+            // Shoes
+            ctx.fillStyle = colors.shoes;
+            ctx.fillRect(x - 7, spriteY - 3, 6, 4);
+            ctx.fillRect(x + 1, spriteY - 3, 6, 4);
+
+            // Body / Hoodie
+            ctx.fillStyle = colors.jacket;
+            ctx.beginPath();
+            ctx.roundRect(x - 9, spriteY - 28, 18, 16, 4);
+            ctx.fill();
+
+            // Head / Hair
+            ctx.fillStyle = '#ffe0bd';
+            ctx.beginPath();
+            ctx.arc(x, spriteY - 34, 7, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Hair / Cap
+            ctx.fillStyle = colors.hair;
+            ctx.beginPath();
+            ctx.arc(x, spriteY - 36, 7, Math.PI, Math.PI * 2);
+            ctx.fill();
+
+            // Neon Dealer Backpack / Glow Accent
+            ctx.fillStyle = varColor('--neon-green');
+            ctx.shadowColor = varColor('--neon-green');
+            ctx.shadowBlur = 10;
+            ctx.fillRect(x - 4, spriteY - 24, 8, 8);
+            ctx.shadowBlur = 0;
+        }
+
+        /* Draw NPC Sprite */
+        function drawNPCSprite(x, y, npc) {
+            const npcBounceY = Math.sin(animTime * 3 + (npc.col + npc.row)) * 1.5;
+
+            // Ground Aura Ring for NPC with active deal
+            if (npc.hasDeal) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.ellipse(x, y + 4, 18 + Math.sin(animTime * 4) * 2, 9 + Math.sin(animTime * 4), 0, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.15)';
+                ctx.fill();
+                ctx.strokeStyle = 'rgba(255, 215, 0, 0.6)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // Shadow
+            ctx.beginPath();
+            ctx.ellipse(x, y + 4, 12, 6, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+            ctx.fill();
+
+            const spriteY = y - npcBounceY;
+
+            // Body
+            ctx.fillStyle = npc.color;
+            ctx.beginPath();
+            ctx.roundRect(x - 7, spriteY - 24, 14, 14, 3);
+            ctx.fill();
+
+            // Head
+            ctx.fillStyle = '#f7d0a1';
+            ctx.beginPath();
+            ctx.arc(x, spriteY - 29, 6, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Juicy Pulsing Exclamation Mark (!)
+            if (npc.hasDeal) {
+                npc.pulseAnim += 0.08;
+                const bounceY = Math.sin(npc.pulseAnim) * 5;
+                const scaleS = 1 + Math.sin(npc.pulseAnim * 2) * 0.12;
+
+                ctx.save();
+                ctx.translate(x, spriteY - 44 + bounceY);
+                ctx.scale(scaleS, scaleS);
+                ctx.shadowColor = varColor('--neon-gold');
+                ctx.shadowBlur = 14;
+                ctx.fillStyle = varColor('--neon-gold');
+                ctx.font = '900 22px var(--font-tech)';
+                ctx.textAlign = 'center';
+                ctx.fillText('!', 0, 0);
+                ctx.restore();
+            }
+        }
+
+        function varColor(name) {
+            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        }
+
+        /* ==========================================================================
+           8. MAIN RENDER LOOP & UNIFIED Y-SORT PIPELINE
+           ========================================================================== */
+        function render() {
+            animTime += 0.08;
+
+            // 1. Update Canvas Dimensions & Camera Lerp
+            if (canvas.width !== window.innerWidth || canvas.height !== window.innerHeight) {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+            }
+
+            const pPos = gridToScreen(player.subCol, player.subRow, 0);
+            camera.targetX = canvas.width / 2 - pPos.x;
+            camera.targetY = canvas.height / 2 - pPos.y;
+
+            const dx = (camera.targetX - camera.x) * camera.lerpSpeed;
+            const dy = (camera.targetY - camera.y) * camera.lerpSpeed;
+            camera.x += dx;
+            camera.y += dy;
+
+            if (Math.hypot(dx, dy) > 0.5) {
+                AudioEngine.onCameraMove(dx, dy);
+            }
+
+            // Clear Screen
+            ctx.fillStyle = '#06070a';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.save();
+            ctx.translate(Math.round(camera.x), Math.round(camera.y));
+
+            // 2. Build Unified Y-Sort Pipeline Render List
+            const renderList = [];
+
+            // A. Ground Tiles & Topography
+            for (let c = 0; c < GRID_SIZE; c++) {
+                for (let r = 0; r < GRID_SIZE; r++) {
+                    const pos = gridToScreen(c, r, 0);
+
+                    // Skip ground tile render if out of viewport
+                    if (pos.x + camera.x < -100 || pos.x + camera.x > canvas.width + 100 ||
+                        pos.y + camera.y < -100 || pos.y + camera.y > canvas.height + 100) {
+                        continue;
+                    }
+
+                    renderList.push({
+                        depth: (c + r) * 100,
+                        draw: () => {
+                            let tileColor = '#161a24';
+                            let strokeColor = 'rgba(255,255,255,0.03)';
+
+                            const tile = map[c][r];
+                            if (tile.type === 'tram_track') tileColor = '#10202b';
+                            else if (tile.type === 'grass') tileColor = '#0b261a';
+                            else if (tile.type === 'paved_road') tileColor = '#1a1d26';
+                            else if (tile.type === 'plaza_center') tileColor = '#1c2230';
+
+                            // Hover highlight
+                            if (c === mouse.worldCol && r === mouse.worldRow) {
+                                strokeColor = varColor('--neon-green');
+                            }
+
+                            drawTileDiamond(pos.x, pos.y, TILE_W, TILE_H, tileColor, strokeColor);
+
+                            // Draw Tram Rails Detail
+                            if (tile.type === 'tram_track') {
+                                ctx.strokeStyle = 'rgba(0, 216, 255, 0.4)';
+                                ctx.lineWidth = 1.5;
+                                ctx.beginPath();
+                                ctx.moveTo(pos.x - 16, pos.y - 8);
+                                ctx.lineTo(pos.x + 16, pos.y + 8);
+                                ctx.moveTo(pos.x - 8, pos.y - 12);
+                                ctx.lineTo(pos.x + 24, pos.y + 4);
+                                ctx.stroke();
+                            }
+                        }
+                    });
+                }
+            }
+
+            // B. 1x1 Volumetric Pillars (Buildings & Architecture)
+            for (let c = 0; c < GRID_SIZE; c++) {
+                for (let r = 0; r < GRID_SIZE; r++) {
+                    const pillar = getPillar(c, r);
+                    if (!pillar) continue;
+
+                    // X-Ray Occlusion Check against Player Position
+                    const isBehindPillar = (c >= player.col && r >= player.row &&
+                        c <= player.col + 3 && r <= player.row + 3);
+
+                    for (let z = 0; z < pillar.height; z++) {
+                        const pos = gridToScreen(c, r, z);
+                        const blockDepth = (c + r) * 100 + z * 10 + 20;
+
+                        renderList.push({
+                            depth: blockDepth,
+                            draw: () => {
+                                drawPillarBlock(pos.x, pos.y, z, pillar, isBehindPillar);
+                            }
+                        });
+                    }
+                }
+            }
+
+            // C. NPCs
+            npcs.forEach(npc => {
+                const pos = gridToScreen(npc.subCol, npc.subRow, 0);
+                renderList.push({
+                    depth: (npc.col + npc.row) * 100 + 40,
+                    draw: () => {
+                        drawNPCSprite(pos.x, pos.y, npc);
+                    }
+                });
+            });
+
+            // D. Player Entity
+            const playerPos = gridToScreen(player.subCol, player.subRow, 0);
+            renderList.push({
+                depth: (player.col + player.row) * 100 + 50,
+                draw: () => {
+                    drawPlayerSprite(playerPos.x, playerPos.y, player.colors);
+                }
+            });
+
+            // 3. Execute Sorted Render Pipeline (Back to Front)
+            renderList.sort((a, b) => a.depth - b.depth);
+            renderList.forEach(item => item.draw());
+
+            // 4. Render Click Target Target Ripples
+            for (let i = clickRipples.length - 1; i >= 0; i--) {
+                const rip = clickRipples[i];
+                rip.radius += 1.4;
+                rip.alpha -= 0.035;
+                if (rip.alpha <= 0) {
+                    clickRipples.splice(i, 1);
+                    continue;
+                }
+                ctx.save();
+                ctx.globalAlpha = rip.alpha;
+                ctx.strokeStyle = varColor('--neon-green');
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.ellipse(rip.x, rip.y, rip.radius * 2, rip.radius, 0, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.restore();
+            }
+
+            // 5. Render Particle Systems & Floating Texts
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.alpha -= p.life;
+                if (p.alpha <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+                ctx.globalAlpha = p.alpha;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1.0;
+            }
+
+            for (let i = floatTexts.length - 1; i >= 0; i--) {
+                const ft = floatTexts[i];
+                ft.y += ft.vy;
+                ft.alpha -= 0.02;
+                if (ft.alpha <= 0) {
+                    floatTexts.splice(i, 1);
+                    continue;
+                }
+                ctx.globalAlpha = ft.alpha;
+                ctx.font = '700 16px var(--font-tech)';
+                ctx.fillStyle = ft.color;
+                ctx.textAlign = 'center';
+                ctx.fillText(ft.text, ft.x, ft.y);
+                ctx.globalAlpha = 1.0;
+            }
+
+            ctx.restore();
+
+            // 6. Render Ambient Floating Dust Motes (Screen Space)
+            ambientDust.forEach(d => {
+                d.x += d.vx;
+                d.y += d.vy;
+                d.alpha += Math.sin(Date.now() * 0.002) * 0.005;
+                if (d.y < -10) d.y = canvas.height + 10;
+                if (d.x < -10) d.x = canvas.width + 10;
+                if (d.x > canvas.width + 10) d.x = -10;
+
+                ctx.fillStyle = d.color + Math.max(0.1, Math.min(0.7, d.alpha)) + ')';
+                ctx.beginPath();
+                ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            // Request Next Frame
+            requestAnimationFrame(render);
+        }
+
+        /* ==========================================================================
+           9. GAMEPLAY LOGIC & MOVEMENT UPDATES
+           ========================================================================== */
+        function updateGameLogic() {
+            // Player Movement Along Path
+            if (player.path.length > 0) {
+                const targetNode = player.path[0];
+                const dx = targetNode.col - player.subCol;
+                const dy = targetNode.row - player.subRow;
+                const dist = Math.hypot(dx, dy);
+
+                if (dist < player.speed) {
+                    player.subCol = targetNode.col;
+                    player.subRow = targetNode.row;
+                    player.col = targetNode.col;
+                    player.row = targetNode.row;
+                    player.path.shift();
+
+                    // Step sound effect per ground type
+                    const currentTile = map[player.col][player.row];
+                    AudioEngine.onStep(currentTile ? currentTile.type : 'cobblestone');
+
+                    // Step particle
+                    const pPos = gridToScreen(player.subCol, player.subRow, 0);
+                    spawnParticles(pPos.x, pPos.y, 3, 'rgba(255,255,255,0.3)');
+
+                    if (player.path.length === 0) {
+                        player.moving = false;
+                    }
+                } else {
+                    player.subCol += (dx / dist) * player.speed;
+                    player.subRow += (dy / dist) * player.speed;
+                    player.col = Math.round(player.subCol);
+                    player.row = Math.round(player.subRow);
+                    player.moving = true;
+                }
+            }
+        }
+
+        setInterval(updateGameLogic, 1000 / 60);
+
+        /* ==========================================================================
+           10. UI & GAME PROGRESSION MECHANICS
+           ========================================================================== */
+        function updateHUD() {
+            const cashEl = document.getElementById('cashVal');
+            const stockEl = document.getElementById('stockVal');
+            const xpTextEl = document.getElementById('xpText');
+
+            cashEl.textContent = `${player.cash} €`;
+            stockEl.textContent = `${player.stock} u`;
+            document.getElementById('repVal').textContent = `Niveau ${player.reputation}`;
+            document.getElementById('levelBadge').textContent = player.level;
+            xpTextEl.textContent = `${player.xp} / ${player.xpToNext}`;
+
+            const xpPercent = Math.min(100, (player.xp / player.xpToNext) * 100);
+            document.getElementById('xpBarFill').style.width = `${xpPercent}%`;
+
+            // Trigger Value Pop Animation
+            [cashEl, stockEl, xpTextEl].forEach(el => {
+                el.classList.remove('value-pop');
+                void el.offsetWidth; // Reflow
+                el.classList.add('value-pop');
+            });
+        }
+
+        function triggerDeal(npc) {
+            if (player.stock <= 0) {
+                showNotification("📦 Stock épuisé ! Cliquez sur Ravitaillement !");
+                return;
+            }
+
+            player.stock--;
+            player.cash += npc.rewardCash;
+            player.xp += npc.rewardXP;
+            player.reputation += 1;
+
+            AudioEngine.onTransactionSuccess();
+
+            const npcPos = gridToScreen(npc.subCol, npc.subRow, 0);
+            spawnFloatingText(`+${npc.rewardCash}€  +${npc.rewardXP}XP`, npcPos.x, npcPos.y - 30, '#ffd700');
+            spawnParticles(npcPos.x, npcPos.y, 16, '#00ff88');
+
+            // Remove NPC and trigger respawn later
+            const idx = npcs.indexOf(npc);
+            if (idx > -1) npcs.splice(idx, 1);
+
+            checkLevelUp();
+            updateHUD();
+        }
+
+        function checkLevelUp() {
+            if (player.xp >= player.xpToNext) {
+                player.level++;
+                player.xp -= player.xpToNext;
+                player.xpToNext = Math.floor(player.xpToNext * 1.5);
+
+                AudioEngine.onLevelUp();
+
+                // Flash Animation
+                const flash = document.getElementById('level-up-flash');
+                flash.style.opacity = '1';
+                setTimeout(() => flash.style.opacity = '0', 600);
+
+                showNotification(`🔥 NIVEAU SUPÉRIEUR ${player.level} ! Prix augmentés !`);
+            }
+        }
+
+        function showNotification(msg) {
+            const banner = document.getElementById('notification-banner');
+            document.getElementById('notificationText').textContent = msg;
+            banner.classList.add('show');
+            setTimeout(() => banner.classList.remove('show'), 3500);
+        }
+
+        /* ==========================================================================
+           11. INTERACTION & INPUT CONTROLLERS
+           ========================================================================== */
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
+
+            const grid = screenToGrid(mouse.x, mouse.y);
+            mouse.worldCol = grid.col;
+            mouse.worldRow = grid.row;
+
+            // Check NPC Hover
+            mouse.hoveredNPC = npcs.find(n => n.col === grid.col && n.row === grid.row);
+            canvas.style.cursor = mouse.hoveredNPC ? 'pointer' : 'crosshair';
+        });
+
+        window.addEventListener('click', (e) => {
+            // Ignore click if clicking on UI overlay
+            if (e.target.closest('#hud-top, #controls-left, #location-tag, .modal-content, #controls-hint')) {
+                return;
+            }
+
+            AudioEngine.init();
+
+            const grid = screenToGrid(e.clientX, e.clientY);
+            if (grid.col < 0 || grid.col >= GRID_SIZE || grid.row < 0 || grid.row >= GRID_SIZE) return;
+
+            // Target click ripple effect
+            const pPos = gridToScreen(grid.col, grid.row, 0);
+            clickRipples.push({ x: pPos.x, y: pPos.y, radius: 4, alpha: 1.0 });
+
+            // Click Player -> Customization Modal
+            if (grid.col === player.col && grid.row === player.row) {
+                openCustomizationModal();
+                return;
+            }
+
+            // Click NPC -> Interact / Deal
+            const clickedNPC = npcs.find(n => n.col === grid.col && n.row === grid.row);
+            if (clickedNPC) {
+                const dist = Math.hypot(player.col - clickedNPC.col, player.row - clickedNPC.row);
+                if (dist <= 1.5) {
+                    triggerDeal(clickedNPC);
+                } else {
+                    // Pathfind to adjacent tile of NPC
+                    const path = findPath(player.col, player.row, clickedNPC.col, clickedNPC.row);
+                    if (path.length > 0) {
+                        path.pop(); // Stop adjacent
+                        player.path = path;
+                    }
+                }
+                return;
+            }
+
+            // Click Map Ground -> Move Player
+            if (isTileWalkable(grid.col, grid.row)) {
+                player.path = findPath(player.col, player.row, grid.col, grid.row);
+            }
+        });
+
+        /* Button Action Listeners */
+        document.getElementById('btnRestock').addEventListener('click', () => {
+            AudioEngine.init();
+            if (player.cash >= 20) {
+                player.cash -= 20;
+                player.stock += 5;
+                AudioEngine.onRestock();
+                showNotification("🏬 Ravitaillement effectué (+5 Stock)");
+                updateHUD();
+
+                const pPos = gridToScreen(player.subCol, player.subRow, 0);
+                spawnFloatingText("+5 Stock", pPos.x, pPos.y - 30, '#00ff88');
+            } else {
+                showNotification("❌ Fonds insuffisants (20€ nécessaires)");
+            }
+        });
+
+        document.getElementById('btnCustomize').addEventListener('click', openCustomizationModal);
+        document.getElementById('btnCloseModal').addEventListener('click', closeCustomizationModal);
+        document.getElementById('btnSaveCustom').addEventListener('click', closeCustomizationModal);
+
+        /* ==========================================================================
+           12. PLAYER CUSTOMIZATION MODAL & LIVE PREVIEW
+           ========================================================================== */
+        const modal = document.getElementById('modalCustomization');
+
+        function openCustomizationModal() {
+            modal.classList.add('active');
+            renderPreviewPlayer();
+        }
+
+        function closeCustomizationModal() {
+            modal.classList.remove('active');
+        }
+
+        ['colJacket', 'colPants', 'colHair', 'colShoes'].forEach(id => {
+            document.getElementById(id).addEventListener('input', (e) => {
+                if (id === 'colJacket') player.colors.jacket = e.target.value;
+                if (id === 'colPants') player.colors.pants = e.target.value;
+                if (id === 'colHair') player.colors.hair = e.target.value;
+                if (id === 'colShoes') player.colors.shoes = e.target.value;
+                renderPreviewPlayer();
+            });
+        });
+
+        function renderPreviewPlayer() {
+            previewCanvas.width = 140;
+            previewCanvas.height = 160;
+            previewCtx.clearRect(0, 0, 140, 160);
+
+            // Center Mannequin
+            previewCtx.save();
+            previewCtx.scale(2.2, 2.2);
+            drawPlayerSprite(32, 60, player.colors);
+            previewCtx.restore();
+        }
+
+        /* Start Render Loop & Initial HUD Sync */
+        updateHUD();
+        requestAnimationFrame(render);
+    </script>
 </body>
 </html>
