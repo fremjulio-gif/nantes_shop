@@ -211,9 +211,16 @@
         .xp-bar-fill {
             height: 100%;
             width: 0%;
-            background: linear-gradient(90deg, var(--neon-green), var(--neon-blue));
-            box-shadow: 0 0 8px var(--neon-green);
+            background: linear-gradient(90deg, var(--neon-green), var(--neon-blue), var(--neon-gold));
+            background-size: 200% 100%;
+            box-shadow: 0 0 12px var(--neon-green);
             transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: shimmerSweep 2.5s infinite linear;
+        }
+
+        @keyframes shimmerSweep {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
         }
 
         /* Action Side Controls */
@@ -2873,8 +2880,34 @@
             }
         }
 
-        function varColor(name) {
-            return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+        /* Ambient Cyberpunk Rain Drops System */
+        const rainDrops = [];
+        for (let i = 0; i < 45; i++) {
+            rainDrops.push({
+                x: Math.random() * window.innerWidth,
+                y: Math.random() * window.innerHeight,
+                speed: 7 + Math.random() * 5,
+                len: 14 + Math.random() * 10
+            });
+        }
+
+        function drawAmbientRain() {
+            ctx.save();
+            ctx.strokeStyle = 'rgba(0, 216, 255, 0.18)';
+            ctx.lineWidth = 1.2;
+            ctx.beginPath();
+            rainDrops.forEach(r => {
+                ctx.moveTo(r.x, r.y);
+                ctx.lineTo(r.x - 3, r.y + r.len);
+                r.y += r.speed;
+                r.x -= 1.5;
+                if (r.y > window.innerHeight) {
+                    r.y = -20;
+                    r.x = Math.random() * window.innerWidth;
+                }
+            });
+            ctx.stroke();
+            ctx.restore();
         }
 
         /* ==========================================================================
@@ -3143,6 +3176,9 @@
                 ctx.restore();
             }
 
+            // Ambient Cyberpunk Rain Drops
+            drawAmbientRain();
+
             // Helicopter Searchlight Event Spot Beam (Screen Space)
             if (PoliceEvents.currentEvent === 'HELICOPTER_SEARCHLIGHT') {
                 ctx.save();
@@ -3359,12 +3395,40 @@
         /* ==========================================================================
            10. UI & GAME PROGRESSION MECHANICS
            ========================================================================== */
+        let displayedCash = 50;
+        let cashAnimFrame = null;
+
+        function animateCashCounter(targetVal) {
+            if (cashAnimFrame) cancelAnimationFrame(cashAnimFrame);
+
+            const startVal = displayedCash;
+            const startTime = performance.now();
+            const duration = 500;
+
+            function step(now) {
+                const elapsed = now - startTime;
+                const progress = Math.min(1, elapsed / duration);
+                const ease = 1 - Math.pow(1 - progress, 3);
+                displayedCash = Math.round(startVal + (targetVal - startVal) * ease);
+
+                const cashEl = document.getElementById('cashVal');
+                if (cashEl) cashEl.textContent = `${displayedCash} €`;
+
+                if (progress < 1) {
+                    cashAnimFrame = requestAnimationFrame(step);
+                } else {
+                    displayedCash = targetVal;
+                    if (cashEl) cashEl.textContent = `${displayedCash} €`;
+                }
+            }
+            cashAnimFrame = requestAnimationFrame(step);
+        }
+
         function updateHUD() {
-            const cashEl = document.getElementById('cashVal');
             const stockEl = document.getElementById('stockVal');
             const xpTextEl = document.getElementById('xpText');
 
-            cashEl.textContent = `${player.cash} €`;
+            animateCashCounter(player.cash);
             stockEl.textContent = `${player.stock} u`;
             document.getElementById('repVal').textContent = `Niveau ${player.reputation}`;
             document.getElementById('levelBadge').textContent = player.level;
@@ -3372,13 +3436,6 @@
 
             const xpPercent = Math.min(100, (player.xp / player.xpToNext) * 100);
             document.getElementById('xpBarFill').style.width = `${xpPercent}%`;
-
-            // Trigger Value Pop Animation
-            [cashEl, stockEl, xpTextEl].forEach(el => {
-                el.classList.remove('value-pop');
-                void el.offsetWidth; // Reflow
-                el.classList.add('value-pop');
-            });
         }
 
         function triggerDeal(npc) {
@@ -3388,17 +3445,29 @@
             }
 
             player.stock--;
-            player.cash += npc.rewardCash;
-            player.xp += npc.rewardXP;
+            const multiplier = (1 + (typeof prestigeLevel !== 'undefined' ? prestigeLevel : 0) * 0.25);
+            const gainedCash = Math.floor(npc.rewardCash * multiplier);
+            const gainedXP = Math.floor(npc.rewardXP * multiplier);
+
+            player.cash += gainedCash;
+            player.xp += gainedXP;
             player.reputation += 1;
 
             AudioEngine.onTransactionSuccess();
 
-            const npcPos = gridToScreen(npc.subCol, npc.subRow, 0);
-            spawnFloatingText(`+${npc.rewardCash}€  +${npc.rewardXP}XP`, npcPos.x, npcPos.y - 30, '#ffd700');
-            spawnParticles(npcPos.x, npcPos.y, 16, '#00ff88');
+            // Screen Shake & Brief Flash Feedback
+            shakeTime = 6;
+            shakeIntensity = 4;
+            const flash = document.getElementById('level-up-flash');
+            if (flash) {
+                flash.style.opacity = '0.25';
+                setTimeout(() => flash.style.opacity = '0', 100);
+            }
 
-            // Remove NPC and trigger respawn later
+            const npcPos = gridToScreen(npc.subCol, npc.subRow, 0);
+            spawnFloatingText(`+${gainedCash}€  +${gainedXP}XP`, npcPos.x, npcPos.y - 30, '#ffd700');
+            spawnParticles(npcPos.x, npcPos.y, 18, '#00ff88');
+
             const idx = npcs.indexOf(npc);
             if (idx > -1) npcs.splice(idx, 1);
 
