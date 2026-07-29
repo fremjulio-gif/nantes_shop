@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Nantes Underground | RPG Isométrique Place de Bretagne</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌿</text></svg>">
     <!-- Modern Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1082,6 +1083,15 @@
 
     <!-- MAIN GAME LOGIC (VANILLA JS) -->
     <script>
+        /* Global CSS Variable Helper */
+        function varColor(name) {
+            try {
+                return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || '#00ff88';
+            } catch (e) {
+                return '#00ff88';
+            }
+        }
+
         /* ==========================================================================
            1. AUDIO ENGINE (Web Audio API Synthesizer)
            ========================================================================== */
@@ -1257,6 +1267,16 @@
         // Nantes Underworld Expansion State
         let safehouses = { kiosque: false, hub: false };
         let slowMoTimer = 0;
+
+        // Global Real Estate Monopoly State
+        const realEstate = {
+            penthouse: false,
+            undergroundClub: false,
+            stationBar: false,
+            tourBretagne: { owned: false, price: 2000, income: 50 },
+            barStation: { owned: false, price: 800, income: 15 },
+            clubUnderground: { owned: false, price: 1200, income: 30 }
+        };
 
         // Tramway Line 3 State
         const tramcar = {
