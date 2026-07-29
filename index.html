@@ -1128,36 +1128,59 @@
         setInterval(spawnCar, 3500);
 
         function drawCarSprite(x, y, car) {
-            const h = 10;
-            // Car Body Base
-            ctx.fillStyle = car.color;
+            const carHeight = 14;
+            const drawY = y - carHeight; // Height offset to anchor wheels to ground
+
+            // 1. Ground Shadow under wheels
             ctx.beginPath();
-            ctx.moveTo(x - 14, y);
-            ctx.lineTo(x, y + 7);
-            ctx.lineTo(x + 14, y);
-            ctx.lineTo(x, y - 7);
-            ctx.closePath();
+            ctx.ellipse(x, y + 2, 16, 8, 0, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
             ctx.fill();
 
-            // Car Roof Cabin
-            ctx.fillStyle = adjustBrightness(car.color, 25);
+            // 2. 4 Rubber Wheels
+            ctx.fillStyle = '#0a0a0d';
+            ctx.fillRect(x - 14, y - 3, 5, 5);
+            ctx.fillRect(x + 9, y - 3, 5, 5);
+            ctx.fillRect(x - 9, y + 1, 5, 5);
+            ctx.fillRect(x + 4, y + 1, 5, 5);
+
+            // 3. Volumetric Isometric Car Chassis (Lower Box)
+            // Left Face (Darkened)
             ctx.beginPath();
-            ctx.moveTo(x - 8, y - h);
-            ctx.lineTo(x, y + 4 - h);
-            ctx.lineTo(x + 8, y - h);
-            ctx.lineTo(x, y - 4 - h);
+            ctx.moveTo(x - 16, drawY + 6);
+            ctx.lineTo(x, drawY + 12);
+            ctx.lineTo(x, drawY + 4);
+            ctx.lineTo(x - 16, drawY - 2);
             ctx.closePath();
+            ctx.fillStyle = adjustBrightness(car.color, -25);
             ctx.fill();
+
+            // Right Face
+            ctx.beginPath();
+            ctx.moveTo(x + 16, drawY + 6);
+            ctx.lineTo(x, drawY + 12);
+            ctx.lineTo(x, drawY + 4);
+            ctx.lineTo(x + 16, drawY - 2);
+            ctx.closePath();
+            ctx.fillStyle = car.color;
+            ctx.fill();
+
+            // Top Body Roof Diamond
+            drawTileDiamond(x, drawY - 2, 32, 16, adjustBrightness(car.color, 25), '#ffffff');
+
+            // 4. Roof Passenger Cabin Block (Upper Box)
+            ctx.fillStyle = adjustBrightness(car.color, 40);
+            ctx.fillRect(x - 7, drawY - 10, 14, 7);
 
             // Windshield Glass Highlight
-            ctx.fillStyle = 'rgba(0, 216, 255, 0.7)';
-            ctx.fillRect(x - 4, y - h - 1, 8, 4);
+            ctx.fillStyle = 'rgba(0, 216, 255, 0.75)';
+            ctx.fillRect(x - 5, drawY - 9, 10, 4);
 
             // Headlights Glow
             ctx.fillStyle = '#ffffaa';
             ctx.shadowColor = '#ffffaa';
-            ctx.shadowBlur = 8;
-            ctx.fillRect(x + (car.dirCol >= 0 ? 8 : -10), y, 4, 3);
+            ctx.shadowBlur = 10;
+            ctx.fillRect(x + (car.dirCol >= 0 ? 12 : -14), drawY + 3, 4, 3);
             ctx.shadowBlur = 0;
         }
 
@@ -1194,7 +1217,7 @@
                 }
 
                 const dist = Math.hypot(player.col - cop.col, player.row - cop.row);
-                if (dist < 4.5 && activeOrders.length > 0) {
+                if (dist < 4.5 && currentOrder && currentOrder.state === 'DELIVER') {
                     playerSpotted = true;
                 }
             });
@@ -1219,9 +1242,11 @@
                 suspicionHud.classList.remove('active');
                 player.cash = Math.floor(player.cash * 0.7);
                 player.stock = Math.max(0, player.stock - 3);
+                if (currentOrder) currentOrder = null;
                 AudioEngine.onRestock();
                 showNotification("🚔 CONTRÔLE POLICE ! Saisie de marchandise (-30% Cash, -3 Stock) !");
                 updateHUD();
+                renderWeedDashWidget();
             }
         }
 
@@ -1255,57 +1280,57 @@
         }
 
         /* ==========================================================================
-           7. WEEDDASH ORDER SYSTEM (UBER WEED DELIVERIES)
+           7. WEEDDASH ORDER SYSTEM (3-STATE DELIVERY LOOP)
            ========================================================================== */
-        const activeOrders = [];
+        let currentOrder = null; // Single active delivery order
         let driverRating = 5.0;
 
         const strains = [
-            { name: 'Purple Haze (Sativa)', pay: 65, xp: 30 },
-            { name: 'Gelato #33 (Indica)', pay: 85, xp: 40 },
-            { name: 'CBD Gummies (Edibles)', pay: 45, xp: 20 },
-            { name: 'Nantes Kush Premium', pay: 110, xp: 50 }
+            { name: 'Purple Haze (Sativa)', pay: 75, xp: 35 },
+            { name: 'Gelato #33 (Indica)', pay: 95, xp: 45 },
+            { name: 'CBD Gummies (Edibles)', pay: 50, xp: 25 },
+            { name: 'Nantes Kush Premium', pay: 125, xp: 60 }
         ];
 
         function spawnWeedDashOrder() {
-            if (activeOrders.length >= 2) return;
+            if (currentOrder !== null) return;
 
             let col, row, attempts = 0;
             do {
-                col = Math.floor(3 + Math.random() * (GRID_SIZE - 6));
-                row = Math.floor(3 + Math.random() * (GRID_SIZE - 6));
+                col = Math.floor(4 + Math.random() * (GRID_SIZE - 8));
+                row = Math.floor(4 + Math.random() * (GRID_SIZE - 8));
                 attempts++;
             } while (!isTileWalkable(col, row) && attempts < 50);
 
             if (isTileWalkable(col, row)) {
                 const strain = strains[Math.floor(Math.random() * strains.length)];
-                const order = {
+                currentOrder = {
                     id: Math.random().toString(36).substr(2, 7),
-                    col: col,
-                    row: row,
+                    customerCol: col,
+                    customerRow: row,
+                    pickupCol: 5, // Glass Kiosque location
+                    pickupRow: 22,
                     strain: strain.name,
                     rewardCash: strain.pay,
                     rewardXP: strain.xp,
-                    timeLeft: 40
+                    timeLeft: 45,
+                    state: 'OFFER' // 'OFFER' -> 'PICKUP' -> 'DELIVER'
                 };
-                activeOrders.push(order);
                 renderWeedDashWidget();
-                showNotification(`🌿 Nouvelle Commande WeedDash : ${strain.name} (${strain.pay}€) !`);
+                showNotification(`📱 NOUVELLE COURSE WEEDDASH : ${strain.name} (+${strain.pay}€) !`);
             }
         }
 
-        setInterval(spawnWeedDashOrder, 9000);
+        setInterval(spawnWeedDashOrder, 8000);
         setTimeout(spawnWeedDashOrder, 1500);
 
         function updateOrders() {
-            for (let i = activeOrders.length - 1; i >= 0; i--) {
-                const ord = activeOrders[i];
-                ord.timeLeft -= 1;
-                if (ord.timeLeft <= 0) {
-                    activeOrders.splice(i, 1);
+            if (currentOrder && (currentOrder.state === 'PICKUP' || currentOrder.state === 'DELIVER')) {
+                currentOrder.timeLeft -= 1;
+                if (currentOrder.timeLeft <= 0) {
+                    currentOrder = null;
                     driverRating = Math.max(1.0, parseFloat((driverRating - 0.2).toFixed(1)));
-                    showNotification("❌ Commande expirée ! Note Driver en baisse.");
-                    renderWeedDashWidget();
+                    showNotification("❌ Course expirée ! Votre note de livreur a baissé.");
                 }
             }
             renderWeedDashWidget();
@@ -1313,26 +1338,62 @@
 
         setInterval(updateOrders, 1000);
 
+        function acceptCurrentOrder() {
+            AudioEngine.init();
+            if (currentOrder && currentOrder.state === 'OFFER') {
+                currentOrder.state = 'PICKUP';
+                showNotification("📦 Mission : Allez au Kiosque en verre (Sud-Ouest) charger la commande !");
+                renderWeedDashWidget();
+            }
+        }
+
         function renderWeedDashWidget() {
             const listEl = document.getElementById('activeOrdersList');
             const ratingEl = document.getElementById('driverRating');
             if (ratingEl) ratingEl.textContent = driverRating.toFixed(1);
 
             if (!listEl) return;
-            if (activeOrders.length === 0) {
-                listEl.innerHTML = `<div style="font-size: 11px; color: var(--text-dim); text-align: center; padding: 6px;">En attente de commandes...</div>`;
+
+            if (!currentOrder) {
+                listEl.innerHTML = `<div style="font-size: 11px; color: var(--text-dim); text-align: center; padding: 10px;">Recherche de nouvelles courses WeedDash...</div>`;
                 return;
             }
 
-            listEl.innerHTML = activeOrders.map(ord => `
-                <div class="order-card ${ord.timeLeft < 15 ? 'urgent' : ''}">
-                    <div class="order-top">
-                        <span class="strain-name">${ord.strain}</span>
-                        <span class="order-timer">⏱️ ${ord.timeLeft}s</span>
+            if (currentOrder.state === 'OFFER') {
+                listEl.innerHTML = `
+                    <div class="order-card urgent">
+                        <div class="order-top">
+                            <span class="strain-name">${currentOrder.strain}</span>
+                            <span class="order-payout">+${currentOrder.rewardCash}€</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-dim);">Chrono : 45s après acceptation</div>
+                        <button id="btnAcceptOrder" onclick="acceptCurrentOrder()" class="action-btn" style="padding: 8px; justify-content: center; background: var(--neon-green); color: #000; margin-top: 4px;">
+                            🌿 ACCEPTER LA COURSE
+                        </button>
                     </div>
-                    <div class="order-payout">Gain : +${ord.rewardCash}€ | +${ord.rewardXP}XP</div>
-                </div>
-            `).join('');
+                `;
+            } else if (currentOrder.state === 'PICKUP') {
+                listEl.innerHTML = `
+                    <div class="order-card">
+                        <div class="order-top">
+                            <span class="strain-name" style="color: var(--neon-green);">🟢 ÉTAPE 1 : RETRAIT STOCK</span>
+                            <span class="order-timer">⏱️ ${currentOrder.timeLeft}s</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-main);">Rendez-vous au <b>Kiosque en verre</b> (Sud-Ouest) !</div>
+                    </div>
+                `;
+            } else if (currentOrder.state === 'DELIVER') {
+                listEl.innerHTML = `
+                    <div class="order-card urgent">
+                        <div class="order-top">
+                            <span class="strain-name" style="color: var(--neon-gold);">⭐ ÉTAPE 2 : LIVRAISON</span>
+                            <span class="order-timer">⏱️ ${currentOrder.timeLeft}s</span>
+                        </div>
+                        <div style="font-size: 11px; color: var(--text-main);">${currentOrder.strain} (+${currentOrder.rewardCash}€)</div>
+                        <div style="font-size: 10px; color: var(--neon-green);">Rejoignez le client sur la place !</div>
+                    </div>
+                `;
+            }
         }
 
         /* ==========================================================================
@@ -1779,25 +1840,50 @@
                 });
             });
 
-            // Active WeedDash Order Customer Destination Markers
-            activeOrders.forEach(ord => {
-                const pos = gridToScreen(ord.col, ord.row, 0);
-                renderList.push({
-                    depth: (ord.col + ord.row) * 100 + 15,
-                    draw: () => {
-                        // Pulsing Weed Icon Bag over delivery target
-                        ctx.save();
-                        const bounceY = Math.sin(animTime * 6) * 4;
-                        ctx.shadowColor = varColor('--neon-green');
-                        ctx.shadowBlur = 12;
-                        ctx.fillStyle = varColor('--neon-green');
-                        ctx.font = '700 18px var(--font-tech)';
-                        ctx.textAlign = 'center';
-                        ctx.fillText('🛍️ WeedDash', pos.x, pos.y - 35 + bounceY);
-                        ctx.restore();
-                    }
-                });
-            });
+            // Active WeedDash Order Markers (Pickup & Delivery Beacons)
+            if (currentOrder) {
+                if (currentOrder.state === 'PICKUP') {
+                    const kPos = gridToScreen(currentOrder.pickupCol, currentOrder.pickupRow, 0);
+                    renderList.push({
+                        depth: (currentOrder.pickupCol + currentOrder.pickupRow) * 100 + 15,
+                        draw: () => {
+                            ctx.save();
+                            const bounceY = Math.sin(animTime * 6) * 5;
+                            // Vertical Beam Light
+                            ctx.fillStyle = 'rgba(0, 255, 136, 0.15)';
+                            ctx.fillRect(kPos.x - 8, kPos.y - 120, 16, 120);
+
+                            ctx.shadowColor = varColor('--neon-green');
+                            ctx.shadowBlur = 14;
+                            ctx.fillStyle = varColor('--neon-green');
+                            ctx.font = '700 18px var(--font-tech)';
+                            ctx.textAlign = 'center';
+                            ctx.fillText('🟢 RETRAIT STOCK (KIOSQUE)', kPos.x, kPos.y - 40 + bounceY);
+                            ctx.restore();
+                        }
+                    });
+                } else if (currentOrder.state === 'DELIVER') {
+                    const cPos = gridToScreen(currentOrder.customerCol, currentOrder.customerRow, 0);
+                    renderList.push({
+                        depth: (currentOrder.customerCol + currentOrder.customerRow) * 100 + 15,
+                        draw: () => {
+                            ctx.save();
+                            const bounceY = Math.sin(animTime * 6) * 5;
+                            // Vertical Beam Light
+                            ctx.fillStyle = 'rgba(255, 215, 0, 0.18)';
+                            ctx.fillRect(cPos.x - 10, cPos.y - 130, 20, 130);
+
+                            ctx.shadowColor = varColor('--neon-gold');
+                            ctx.shadowBlur = 14;
+                            ctx.fillStyle = varColor('--neon-gold');
+                            ctx.font = '700 18px var(--font-tech)';
+                            ctx.textAlign = 'center';
+                            ctx.fillText(`⭐ CLIENT WEEDDASH (${currentOrder.timeLeft}s)`, cPos.x, cPos.y - 45 + bounceY);
+                            ctx.restore();
+                        }
+                    });
+                }
+            }
 
             // D. Player Entity
             const playerPos = gridToScreen(player.subCol, player.subRow, 0);
@@ -1932,29 +2018,43 @@
         }
 
         function checkWeedDashDelivery() {
-            for (let i = activeOrders.length - 1; i >= 0; i--) {
-                const ord = activeOrders[i];
-                const dist = Math.hypot(player.col - ord.col, player.row - ord.row);
-                if (dist <= 1.5) {
-                    if (player.stock <= 0) {
-                        showNotification("📦 Stock épuisé pour livrer ! Ravitaillez-vous !");
-                        return;
-                    }
+            if (!currentOrder) return;
 
-                    player.stock--;
-                    player.cash += ord.rewardCash;
-                    player.xp += ord.rewardXP;
+            // Step 1: Check Pickup at Glass Kiosque
+            if (currentOrder.state === 'PICKUP') {
+                const distKiosque = Math.hypot(player.col - currentOrder.pickupCol, player.row - currentOrder.pickupRow);
+                if (distKiosque <= 2.2) {
+                    currentOrder.state = 'DELIVER';
+                    player.stock += 1;
+                    AudioEngine.onRestock();
+
+                    const kPos = gridToScreen(currentOrder.pickupCol, currentOrder.pickupRow, 0);
+                    spawnFloatingText("+1 Stock Charger", kPos.x, kPos.y - 30, '#00ff88');
+                    spawnParticles(kPos.x, kPos.y, 16, '#00ff88');
+
+                    showNotification("📦 Stock chargé au Kiosque ! Direction le Client sur la place !");
+                    updateHUD();
+                    renderWeedDashWidget();
+                }
+            }
+            // Step 2: Check Delivery at Customer Position
+            else if (currentOrder.state === 'DELIVER') {
+                const distCust = Math.hypot(player.col - currentOrder.customerCol, player.row - currentOrder.customerRow);
+                if (distCust <= 1.8) {
+                    player.stock = Math.max(0, player.stock - 1);
+                    player.cash += currentOrder.rewardCash;
+                    player.xp += currentOrder.rewardXP;
                     player.reputation++;
                     driverRating = Math.min(5.0, parseFloat((driverRating + 0.1).toFixed(1)));
 
                     AudioEngine.onTransactionSuccess();
 
-                    const pos = gridToScreen(ord.col, ord.row, 0);
-                    spawnFloatingText(`+${ord.rewardCash}€ ⭐5.0`, pos.x, pos.y - 30, '#00ff88');
-                    spawnParticles(pos.x, pos.y, 20, '#00ff88');
+                    const cPos = gridToScreen(currentOrder.customerCol, currentOrder.customerRow, 0);
+                    spawnFloatingText(`+$${currentOrder.rewardCash} ⭐5.0`, cPos.x, cPos.y - 30, '#ffd700');
+                    spawnParticles(cPos.x, cPos.y, 24, '#00ff88');
 
-                    activeOrders.splice(i, 1);
-                    showNotification(`✅ Livraison WeedDash effectuée : ${ord.strain} (+${ord.rewardCash}€) !`);
+                    showNotification(`🎉 LIVRAISON RÉUSSIE : ${currentOrder.strain} (+${currentOrder.rewardCash}€) !`);
+                    currentOrder = null;
                     checkLevelUp();
                     updateHUD();
                     renderWeedDashWidget();
