@@ -492,13 +492,70 @@
             box-shadow: 0 0 16px rgba(0, 255, 136, 0.3);
         }
 
-        .pulse-dot {
-            width: 8px;
-            height: 8px;
+        /* Mobile Touch Joystick & Responsive Styles */
+        #joystick-container {
+            position: absolute;
+            bottom: 24px;
+            left: 24px;
+            width: 110px;
+            height: 110px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+            touch-action: none;
+            border-color: var(--neon-green);
+        }
+
+        #joystick-knob {
+            width: 44px;
+            height: 44px;
             border-radius: 50%;
             background: var(--neon-green);
-            box-shadow: 0 0 10px var(--neon-green);
-            animation: pulse 1.5s infinite;
+            box-shadow: 0 0 14px var(--neon-green);
+            pointer-events: none;
+        }
+
+        #touch-dash-btn {
+            position: absolute;
+            bottom: 30px;
+            right: 24px;
+            width: 70px;
+            height: 70px;
+            border-radius: 50%;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 14px;
+            z-index: 50;
+        }
+
+        @media (max-width: 768px) {
+            #joystick-container, #touch-dash-btn {
+                display: flex !important;
+            }
+            #controls-left {
+                top: 10px;
+                left: 10px;
+                transform: scale(0.85);
+                transform-origin: top left;
+            }
+            #hud-top {
+                transform: scale(0.85);
+                top: 10px;
+            }
+            #weeddash-widget {
+                right: 10px;
+                bottom: 110px;
+                width: 220px;
+                transform: scale(0.85);
+                transform-origin: bottom right;
+            }
+            #controls-hint {
+                display: none !important;
+            }
         }
 
         @keyframes pulse {
@@ -825,10 +882,18 @@
 
         <!-- Bottom Controls Hint -->
         <div id="controls-hint" class="glass-panel">
+            <div>• <span>ZQSD / WASD / Clavier</span> : Déplacement direct</div>
             <div>• <span>Clic sur le sol</span> : Déplacement fluide</div>
             <div>• <span>Clic sur PNJ (!)</span> : Conclure un deal (-1 Stock)</div>
-            <div>• <span>Clic sur le Joueur</span> : Personnalisation</div>
         </div>
+
+        <!-- Mobile Touch Controls HUD -->
+        <div id="joystick-container" class="glass-panel">
+            <div id="joystick-knob"></div>
+        </div>
+        <button id="touch-dash-btn" class="glass-panel action-btn dash-btn">
+            ⚡ DASH
+        </button>
 
         <!-- Level Up Flash Overlay -->
         <div id="level-up-flash"></div>
@@ -1054,12 +1119,12 @@
 
         // Player State & Vehicle Upgrades
         const player = {
-            col: 15,
-            row: 15,
-            subCol: 15.0,
-            subRow: 15.0,
-            targetCol: 15,
-            targetRow: 15,
+            col: 10,
+            row: 12,
+            subCol: 10.0,
+            subRow: 12.0,
+            targetCol: 10,
+            targetRow: 12,
             path: [],
             speed: 0.08,
             moving: false,
@@ -2576,6 +2641,7 @@
                 }
             }
 
+            const playerPos = gridToScreen(player.subCol, player.subRow, 0);
             renderList.push({ depth: (player.col + player.row) * 100 + 50, draw: () => drawPlayerSprite(playerPos.x, playerPos.y, player.colors) });
 
             renderList.sort((a, b) => a.depth - b.depth);
@@ -2705,6 +2771,8 @@
                 player.stunned--;
                 return;
             }
+
+            handleKeyboardInput();
 
             updateTraffic();
             updatePolice();
@@ -2941,17 +3009,142 @@
             }
         });
 
-        /* Spacebar & QTE Key Listener */
+        /* Full PC Keyboard (ZQSD / WASD / Arrows) & Touch Joystick Handler */
+        const keysPressed = {};
+        let joystickActive = false;
+        let joystickVector = { x: 0, y: 0 };
+
         window.addEventListener('keydown', (e) => {
-            if (e.code === 'Space') {
+            keysPressed[e.code] = true;
+            keysPressed[e.key.toLowerCase()] = true;
+            if (['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.code)) {
                 e.preventDefault();
-                if (qteActive) {
-                    triggerQTEStop();
-                } else {
-                    triggerDash();
-                }
+            }
+            if (e.code === 'Space') {
+                if (qteActive) triggerQTEStop();
+                else triggerDash();
             }
         });
+
+        window.addEventListener('keyup', (e) => {
+            keysPressed[e.code] = false;
+            keysPressed[e.key.toLowerCase()] = false;
+        });
+
+        function handleKeyboardInput() {
+            let moveCol = 0;
+            let moveRow = 0;
+
+            // Z / W / Up -> Isometric North (Up-Right)
+            if (keysPressed['KeyW'] || keysPressed['KeyZ'] || keysPressed['z'] || keysPressed['w'] || keysPressed['ArrowUp']) {
+                moveCol -= 1;
+                moveRow -= 1;
+            }
+            // S / Down -> Isometric South (Down-Left)
+            if (keysPressed['KeyS'] || keysPressed['s'] || keysPressed['ArrowDown']) {
+                moveCol += 1;
+                moveRow += 1;
+            }
+            // Q / A / Left -> Isometric West (Up-Left)
+            if (keysPressed['KeyA'] || keysPressed['KeyQ'] || keysPressed['a'] || keysPressed['q'] || keysPressed['ArrowLeft']) {
+                moveCol -= 1;
+                moveRow += 1;
+            }
+            // D / Right -> Isometric East (Down-Right)
+            if (keysPressed['KeyD'] || keysPressed['d'] || keysPressed['ArrowRight']) {
+                moveCol += 1;
+                moveRow -= 1;
+            }
+
+            // Virtual Joystick Touch Movement Integration
+            if (joystickVector.x !== 0 || joystickVector.y !== 0) {
+                moveCol += joystickVector.x - joystickVector.y;
+                moveRow += joystickVector.x + joystickVector.y;
+            }
+
+            if (moveCol !== 0 || moveRow !== 0) {
+                player.path = []; // Cancel pathfinding for direct player control!
+                const len = Math.hypot(moveCol, moveRow);
+                const stepCol = (moveCol / len) * player.speed;
+                const stepRow = (moveRow / len) * player.speed;
+
+                const nextCol = Math.round(player.subCol + stepCol * 1.5);
+                const nextRow = Math.round(player.subRow + stepRow * 1.5);
+
+                if (isTileWalkable(nextCol, nextRow)) {
+                    player.subCol += stepCol;
+                    player.subRow += stepRow;
+                    player.col = Math.round(player.subCol);
+                    player.row = Math.round(player.subRow);
+                    player.moving = true;
+
+                    checkWeedDashDelivery();
+
+                    const currentTile = map[player.col][player.row];
+                    let stepColor = 'rgba(180, 190, 200, 0.4)';
+                    if (currentTile) {
+                        if (currentTile.type === 'tram_track') stepColor = '#00d8ff';
+                        else if (currentTile.type === 'grass') stepColor = '#00ff88';
+                    }
+                    const pPos = gridToScreen(player.subCol, player.subRow, 0);
+                    spawnParticles(pPos.x, pPos.y, player.isDashing ? 6 : 2, stepColor);
+                }
+            }
+        }
+
+        /* Mobile Touch Joystick Logic */
+        const joystickContainer = document.getElementById('joystick-container');
+        const joystickKnob = document.getElementById('joystick-knob');
+
+        if (joystickContainer) {
+            joystickContainer.addEventListener('touchstart', (e) => {
+                joystickActive = true;
+                updateJoystick(e.touches[0]);
+            }, { passive: true });
+
+            window.addEventListener('touchmove', (e) => {
+                if (joystickActive && e.touches.length > 0) {
+                    updateJoystick(e.touches[0]);
+                }
+            }, { passive: true });
+
+            window.addEventListener('touchend', () => {
+                joystickActive = false;
+                joystickVector = { x: 0, y: 0 };
+                if (joystickKnob) joystickKnob.style.transform = 'translate(0px, 0px)';
+            });
+
+            function updateJoystick(touch) {
+                const rect = joystickContainer.getBoundingClientRect();
+                const centerX = rect.left + rect.width / 2;
+                const centerY = rect.top + rect.height / 2;
+                const dx = touch.clientX - centerX;
+                const dy = touch.clientY - centerY;
+                const dist = Math.hypot(dx, dy);
+                const maxDist = 40;
+
+                const clampDist = Math.min(dist, maxDist);
+                const angle = Math.atan2(dy, dx);
+                const knobX = Math.cos(angle) * clampDist;
+                const knobY = Math.sin(angle) * clampDist;
+
+                if (joystickKnob) {
+                    joystickKnob.style.transform = `translate(${knobX}px, ${knobY}px)`;
+                }
+
+                joystickVector.x = knobX / maxDist;
+                joystickVector.y = knobY / maxDist;
+            }
+        }
+
+        const btnTouchDash = document.getElementById('touch-dash-btn');
+        if (btnTouchDash) {
+            btnTouchDash.addEventListener('click', triggerDash);
+            btnTouchDash.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                triggerDash();
+            });
+        }
 
         /* Radio Synth Player Listener */
         const btnRadio = document.getElementById('btnToggleRadio');
